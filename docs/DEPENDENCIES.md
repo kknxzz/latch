@@ -8,6 +8,11 @@ Rust vulnerability data. Fetch failures fail the check; stale data is not silent
 accepted. `scripts/test-local.sh` separately runs tests, race detection, vet,
 Rust formatting and Clippy.
 
+The separate native fuzz harness has its own audited lockfile, the same production
+OpenMLS/provider revisions, and pinned libfuzzer-sys 0.4.13. Its optional adapter
+is excluded from production builds. Pinned nightly/compiler tools are development
+dependencies only; setup never changes the default release compiler.
+
 The CI workflow has native Linux/macOS ARM64/AMD64 test jobs and a security job.
 It runs on pull requests, main pushes, manual invocation and weekly advisory
 checks, and is reusable by the release workflow. It uses read-only repository

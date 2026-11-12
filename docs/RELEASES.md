@@ -63,7 +63,7 @@ read during a build. Native execution checks and receipts run automatically.
 `--component client` builds only the client. On Linux, `--component server`
 builds only the server with cgo disabled and does not require Rust or a C compiler.
 The default `all` builds the native client and, on Linux, the native server.
-Output must be an empty private directory. `build-environment.json` records the
+Output must be an empty private directory. `ARTIFACT.environment.json` records the
 commit, source time, Go/Rust/compiler versions and selected macOS SDK.
 
 Run the command again with a different output directory and compare each binary
@@ -96,10 +96,20 @@ in the tests are not release qualification.
 
 ## Publication
 
-Collect all six named artifacts and their receipts in a protected artifact
+Collect all six named artifacts, receipts and environment records in a protected artifact
 directory. All platforms are required; the publisher refuses partial releases,
 incorrect Go package/platform/toolchain, source/version/root mismatches, unsafe
 file permissions, symlinks and overlapping private/public directory trees.
+
+`.github/workflows/release.yml` is a manual, read-only candidate workflow. Supply
+the stable version and independently verified public root encoded as base64.
+It first runs the complete CI workflow, then builds twice on all four native
+platforms, compares each binary/receipt/environment record, and validates all six
+assembled artifacts against the source commit and trust root. The retained
+candidate includes installer sources and public inputs for offline publication.
+It never receives private signing keys or automatically publishes a release.
+Hosted execution remains a separate verification gate; authoring the workflow
+does not establish that a runner completed it.
 
 ```sh
 cd tools/release
@@ -128,10 +138,12 @@ existing clients. Do not rotate private keys by rerunning `init`: root rotation
 requires sequential old-and-new threshold-signed roots following TUF. A root
 rotation authoring command is not yet included in this helper.
 
-Serve the public output under an operator-chosen HTTPS URL. An existing proxy
-may alias its verified `start.sh` at `/start.sh` and serve the output at
-`/client-dist/`. Latch currently does not serve release files itself. No public
-directory listing, private state or administration route should be exposed.
+Serve the public output under an operator-chosen HTTPS URL. Latch can host it
+directly through the optional `distribution_dir` configuration, including the
+`/start.sh` alias and `/client-dist/` repository. See
+[deployment](DEPLOYMENT.md#hosting-client-downloads) for public file permissions
+and bounded serving behavior. An existing HTTPS web server may host the same
+files independently. Never expose the signing directory or private state.
 
 ## Safe first installation
 

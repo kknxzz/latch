@@ -111,6 +111,42 @@ or manage certificates externally. The installer does not modify firewall rules.
 The proxy can observe connection metadata and terminate transport TLS; message
 encryption remains client-side.
 
+## Hosting client downloads
+
+The same Latch gateway can serve a published release bundle. Put only the public
+output from the signing utility in a dedicated directory such as
+`/usr/local/share/latch/client-dist`, with directories `0755` and files `0644`
+(executable public files may be `0755`). Its parents must be readable by the
+`latch` service account. Keep the signing directory and private state separate.
+
+On a fresh installation, add this wizard option after `--`:
+
+```sh
+sudo sh server/scripts/install.sh install --binary ./bin/latch-server -- \
+  --distribution-dir /usr/local/share/latch/client-dist
+```
+
+For an existing installation, set the protected configuration's
+`distribution_dir` explicitly, run `doctor` as the service account and restart
+Latch. It serves `/start.sh`, `/start.sh.sig` and fixed public files under
+`/client-dist/`, including the TUF update repository. With the configured public
+origin `https://chat.example`, the bootstrap repository is
+`https://chat.example/client-dist`. No additional web server is required.
+
+The handler does not list directories, serve arbitrary paths, follow symlinks,
+serve hardlinks or owner-only files, or share the private state tree. It limits
+file sizes and allows four simultaneous downloads, each with a two-minute write
+deadline. It rejects partial-range downloads. Versioned metadata/hash-named
+targets may be cached; mutable manifests and timestamps use `no-store`. Preserve
+that policy in a reverse proxy. Administration is still served only by its
+private listener. Hosting a bundle does not make that server a trusted publisher;
+clients verify their independently obtained software authority.
+
+Publish into a staged public directory. If replacing the directory itself by
+rename, restart Latch to open the new directory; the running handler keeps its
+original directory descriptor. Replacing individual files is supported, but
+readers may encounter a transient mismatched manifest/signature and reject it.
+
 ## Diagnostics and recovery
 
 ```sh
@@ -145,10 +181,21 @@ sudo sh server/scripts/install.sh uninstall
 The installer checks the replacement against existing local configuration before
 atomically installing it, retains the previous binary, and attempts rollback if
 systemd rejects the upgrade. Configuration and security state are preserved.
+The verified candidate is staged outside its private download directory before
+the service-account preflight. Download/credential directory permissions remain
+private. Explicit installation and rollback clear this service's failed state
+before attempting startup; they do not change other units.
 Upgrades and rollback restart the gateway and destroy rooms. No database migration
 rollback is promised; back up private state before future versions that introduce
 state migrations. Protect backups like live state because they contain TOTP,
 enrollment security material and device metadata.
+
+The installer rejects a lower application version, including a development build
+of an already installed stable version. The candidate's configuration-free
+`version --check-upgrade CURRENT` interface performs this comparison. A deliberate
+local rollback may add `--allow-downgrade` after independently verifying the old
+binary and state compatibility. The `start.sh` bootstrap does not expose that
+override; automatic startup-failure rollback restores the retained previous image.
 
 Uninstall stops/disables the service and removes its binary/unit. It retains the
 service account, configuration, keys and security database, including permanent
@@ -168,3 +215,14 @@ No genuine release trust root or signed public bootstrap is published yet.
 `latch update`, signed bootstrap and publisher contract tests pass locally;
 independent reproducible release builds and deployment qualification remain
 unfinished. See [the evidence ledger](IMPLEMENTATION.md) before deploying.
+
+## Disposable VM installer qualification
+
+The Linux-only integration test `TestSystemdInstallerLifecycle` is skipped in
+ordinary test runs. It requires a fresh, disposable Linux VM with running systemd
+and explicit `LATCH_INSTALLER_VM_TEST=1` under root. It refuses existing Latch
+paths/accounts, installs actual native server builds, checks TLS administration,
+enrolls and permanently bans a device, reinstalls, upgrades, triggers failed-start
+rollback, and verifies uninstall preserves network identity and the ban. It
+creates real system paths and a service account; run it only in that disposable
+VM. CI defines separate AMD64 and ARM64 VM jobs. Those jobs have not run yet.

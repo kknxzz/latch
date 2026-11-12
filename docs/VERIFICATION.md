@@ -77,8 +77,34 @@ go test -run='^$' -fuzz=FuzzDecode -fuzztime=60s -parallel=4 ./internal/protocol
 go test -run='^$' -fuzz=FuzzPacket -fuzztime=60s -parallel=4 ./internal/crypto
 ```
 
-`FuzzPacket` covers Go buffer framing, not the Rust MLS parser. Native MLS fuzzing
-and 30-minute pre-release campaigns remain required.
+`FuzzPacket` covers Go buffer framing, not the Rust MLS parser. These initial
+campaigns were followed by the native and thirty-minute runs below.
+
+## Completed long fuzz campaigns
+
+Four thirty-minute campaigns completed successfully on this development host:
+
+| Target | Executions | Result |
+|---|---:|---|
+| Server `internal/protocol/FuzzDecode` | 75,199,105 | Pass, 1800.330 s |
+| Client `internal/protocol/FuzzDecode` | 73,203,826 | Pass, 1800.391 s |
+| Client `internal/crypto/FuzzPacket` | 149,061,691 | Pass, 1800.301 s |
+| Native `mls_input` with AddressSanitizer | 19,773,173 | Pass, 1801 s |
+
+The Go campaigns used two workers each. Native fuzzing used the pinned nightly
+and cargo-fuzz harness described in [FUZZING.md](FUZZING.md), seeded with valid
+synthetic packets. The final native report recorded 4101 coverage counters,
+11989 features, 3012 corpus entries (863 KiB) and 600 MiB reported RSS. These are
+instrumentation/corpus statistics, not coverage percentages or production memory
+measurements. There were no reported crashes, sanitizer errors or saved failures.
+macOS `atos` emitted symbolization warnings for some discovered functions;
+instrumentation and mutation continued, but those function diagnostics lack
+source names. The run's zero exit status and completion report were observed.
+
+Campaigns ran concurrently while other builds/checks were active. Their execution
+rates are not messaging throughput benchmarks. Tests of valid stateful MLS groups,
+membership changes and replay handling remain separate evidence. A completed fuzz
+campaign does not establish absence of vulnerabilities or replace security review.
 
 ## Security scans
 
@@ -154,6 +180,31 @@ repository, and reconnects using its saved key. Test TLS trust is scoped to chil
 process environment variables; no system certificate store is changed. The
 server installer/systemd path has not run on a Linux host.
 
+The actual installer integration now obtains its files from the compiled Latch
+gateway's restricted public release routes through a trusted local TLS proxy.
+It still enrolls using the actual gateway, saves the software repository and
+reconnects with its key. Additional production TLS process checks confirm public
+release downloads and private administration remain on separate listeners.
+Distribution unit/race tests cover traversal/encoded paths, aliases to private
+state, symlinks/hardlinks, private or writable files, size/range/method limits,
+four-download concurrency, shutdown and actual HTTP/1.1 and HTTP/2 transports.
+The handler tests also pass under umask `077`.
+
+The full `scripts/test-local.sh` passed with these changes, including all three
+Go modules, Rust tests, formatting and all-feature Clippy. The Linux-only systemd
+lifecycle test compiles for Linux AMD64 and ARM64. It has not executed here: no
+Linux VM/runtime is available locally. CI now defines explicit disposable VM
+installation/upgrade/rollback/uninstall tests on both architectures. The installer
+preflight was corrected to stage root-only downloads before running as the
+service account; Linux runtime verification of that path is still required.
+
+The subsequent complete security script passed with the new distribution code,
+release/environment checks and fuzzing lockfile. Staticcheck also passed for the
+Linux server build, including the opt-in installer test. Both Rust lockfiles pass
+audit against 1490 loaded advisories with denied warnings (188 application and
+173 harness dependency entries). Known-advisory scans and generated receipts are
+not independent software audits.
+
 The updater's transitive `golang.org/x/crypto` requirement was raised to 0.59.0
 after scanning detected 17 advisories in unused packages of the older module.
 The subsequent verbose Go scan reports no vulnerabilities, including modules.
@@ -206,6 +257,6 @@ The Linux installer passed `sh -n`. No Linux runtime, systemd or container engin
 was available on this development host, so installation/rollback/uninstall and
 the service sandbox have not been executed. No public ACME request was made.
 
-Native parser fuzzing, long fuzz campaigns, performance measurements, production installation checks, the
+Performance measurements, production installation checks, the
 other platform matrix, genuine public release signature verification, independent reproducible
 builds, and an integration security review have not yet been completed.

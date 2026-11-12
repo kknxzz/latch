@@ -61,7 +61,15 @@ is checked before listeners are reported ready. Automatic TLS requires explicit
 certificate-authority terms acceptance and public HTTP-01 validation for both
 configured hostnames.
 
+The optional `distribution_dir` configuration serves verified public release
+files at `/start.sh` and `/client-dist/` on the public listener. It requires a
+separate public directory, rejects links/private files and bounds concurrent
+downloads. No additional web server is needed. See the deployment guide for
+configuration and publication details; hosting does not establish publisher trust.
+
 The Linux installer, systemd unit, upgrade and uninstall commands are described
 in [the deployment guide](../docs/DEPLOYMENT.md). They are written but have not yet
-been executed in a fresh Linux VM. Signed download/bootstrap tooling and platform
-qualification remain incomplete. See [the acceptance ledger](../docs/IMPLEMENTATION.md).
+been executed in a fresh Linux VM. Opt-in systemd lifecycle tests compile for
+both Linux architectures; CI VM execution remains outstanding. Signed client
+bootstrap passes local process integration. Platform qualification and genuine
+release publication remain incomplete. See [the acceptance ledger](../docs/IMPLEMENTATION.md).

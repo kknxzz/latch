@@ -23,6 +23,7 @@ BASE/LICENSE
 BASE/latch-{darwin,linux}-{arm64,amd64}
 BASE/latch-server-linux-{arm64,amd64}
 BASE/ARTIFACT.build.json
+BASE/ARTIFACT.environment.json
 BASE/updates/metadata/...
 BASE/updates/targets/...
 ```
@@ -32,7 +33,7 @@ digest of the corresponding exact file bytes. They can be verified by OpenSSL.
 The public key uses SubjectPublicKeyInfo PEM. Its fingerprint is SHA-256 of its
 DER encoding. The targets role in the separately threshold-signed TUF root uses
 the same public key. The manifest covers all six binaries, installer scripts,
-service unit, public keys, license and native build receipts.
+service unit, public keys, license, native build receipts and compiler environments.
 
 The UTF-8 manifest uses LF line endings, this exact header and field layout:
 

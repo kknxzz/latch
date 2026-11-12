@@ -13,8 +13,8 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
-| M9: installers and updates | In progress | Setup/doctor/TLS/PTY, actual TUF self-update and signed client install/enrollment pass; publisher and bootstrap contracts pass; fresh VM, ACME issuance, real publication and mirror qualification remain |
-| M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
+| M9: installers and updates | In progress | Setup/doctor/TLS/PTY, TUF self-update, restricted release hosting and signed client install/enrollment through the real gateway pass; fresh systemd VM, ACME issuance, real publication and mirror qualification remain |
+| M10: integration/fuzz/performance | In progress | Real-client process scenarios and four thirty-minute Go/native sanitizer fuzz campaigns pass; performance report remains |
 | M11: security/resource review | In progress | Go static/vulnerability, secret scans and updated Rust advisory scan pass locally; platform qualification, independent review and leak/load review remain |
 | M12: reproducible signed releases | In progress | Two isolated native macOS ARM64 builds match byte-for-byte; native builder and receipts implemented; other platforms, independent operator rebuilds and genuine signatures/publication remain |
 
@@ -69,7 +69,11 @@ real client executables. The publisher checks all six native artifact receipts,
 signs bootstrap files/checksums and emits verified TUF metadata. Its tests use
 synthetic cross-platform executables, not qualified release builds. Server
 bootstrap downloads are implemented; the actual systemd installation is untested.
-Built-in release-file hosting, CI release pipeline, platform qualification,
+The read-only CI candidate workflow now performs the complete verification gate,
+two native builds per platform and six-artifact assembly; it has not run remotely.
+Built-in release-file hosting and its TLS/process isolation tests pass locally.
+The Linux systemd lifecycle harness compiles for both target architectures; its
+opt-in VM jobs have not executed. Hosted pipeline execution, platform qualification,
 independent reproducibility and the production resource review remain unfinished.
 Never describe this state as production-ready. Current verification
 commands and environment are recorded in `VERIFICATION.md`.
