@@ -119,3 +119,24 @@ func inspect(binary, targetName, rootPath, version, commit string) error {
 	}
 	return writeNew(binary+".build.json", append(receipt, '\n'), os.FileMode(0644))
 }
+
+func verifyArtifacts(dir, rootPath, version, commit string) error {
+	if !filepath.IsAbs(dir) || !validVersion(version) || len(commit) != 40 || strings.Trim(commit, "0123456789abcdef") != "" {
+		return errors.New("explicit artifacts, version and source commit are required")
+	}
+	root, err := readRegular(rootPath, 65536, false)
+	if err != nil {
+		return err
+	}
+	anchor, err := metadata.Root().FromBytes(root)
+	if err != nil || anchor.VerifyDelegate("root", anchor) != nil || !anchor.Signed.Expires.After(time.Now()) {
+		return errors.New("verification requires a current self-verified publisher root")
+	}
+	p := publication{Artifacts: dir, Version: version, Commit: commit}
+	for _, target := range platforms {
+		if err = validateArtifact(p, target, root); err != nil {
+			return err
+		}
+	}
+	return nil
+}

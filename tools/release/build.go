@@ -164,12 +164,15 @@ func buildNative(b buildOptions) error {
 		if err = inspect(binary, target.Name, b.Root, b.Version, b.Commit); err != nil {
 			return err
 		}
+		data, err := json.MarshalIndent(environment, "", "  ")
+		if err != nil {
+			return err
+		}
+		if err = writeNew(binary+".environment.json", append(data, '\n'), 0644); err != nil {
+			return err
+		}
 	}
-	data, err := json.MarshalIndent(environment, "", "  ")
-	if err != nil {
-		return err
-	}
-	return writeNew(filepath.Join(b.Output, "build-environment.json"), append(data, '\n'), 0644)
+	return nil
 }
 
 func buildEnv(base []string, overrides map[string]string, remove []string) []string {

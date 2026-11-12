@@ -16,11 +16,27 @@ func main() {
 }
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: latch-release build|init|inspect|publish")
+		return errors.New("usage: latch-release build|verify|init|inspect|publish")
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	keys := flags.String("keys-dir", "", "Protected operator signing directory")
 	switch args[0] {
+	case "verify":
+		artifacts := flags.String("artifacts", "", "Absolute directory containing all six artifacts and receipts")
+		root := flags.String("root", "", "Independently verified public TUF root")
+		version := flags.String("version", "", "Stable release version")
+		commit := flags.String("source-commit", "", "Exact source commit")
+		if err := flags.Parse(args[1:]); err != nil {
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected arguments")
+		}
+		if err := verifyArtifacts(*artifacts, *root, *version, *commit); err != nil {
+			return err
+		}
+		fmt.Println("Verified all six artifacts and native receipts.")
+		return nil
 	case "build":
 		b := buildOptions{}
 		flags.StringVar(&b.Source, "source", "", "Repository containing the reviewed commit")

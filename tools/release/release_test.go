@@ -143,7 +143,7 @@ func publicationFixture(t *testing.T) publication {
 		t.Fatal(err)
 	}
 	put(t, p.ServerScript, []byte("#!/bin/sh\nprintf '%s\\n' \"$@\" > \"$LATCH_TEST_ARGUMENTS\"\n"))
-	put(t, p.ServerUnit, []byte("# Test fixture unit, never installed.\n"))
+	put(t, p.ServerUnit, []byte("# Managed by Latch installer.\n# Test fixture unit, never installed.\n"))
 	root := get(t, filepath.Join(keys, "root.json"))
 	for _, target := range platforms {
 		buildFixture(t, filepath.Join(base, target.Name), filepath.Join(p.Artifacts, target.Name), target, root, p.Version)
@@ -156,6 +156,11 @@ func publicationFixture(t *testing.T) publication {
 			t.Fatal(err)
 		}
 		put(t, filepath.Join(p.Artifacts, target.Name+".build.json"), receipt)
+		environment, err := json.Marshal(buildEnvironment{SourceCommit: p.Commit, SourceEpoch: 1, OS: target.OS, Arch: target.Arch, Go: "go1.27.4", Rust: "rustc 1.99.1 (synthetic test fixture)", CCompiler: "Synthetic test fixture", SDK: "Synthetic test fixture"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		put(t, filepath.Join(p.Artifacts, target.Name+".environment.json"), environment)
 	}
 	name := "latch-" + runtime.GOOS + "-" + runtime.GOARCH
 	binary := filepath.Join(p.Artifacts, name)
@@ -176,6 +181,9 @@ func TestPublicationAndVerifiedBootstrap(t *testing.T) {
 		t.Skip("six-platform build and HTTPS bootstrap contracts")
 	}
 	p := publicationFixture(t)
+	if err := verifyArtifacts(p.Artifacts, filepath.Join(p.Keys, "root.json"), p.Version, p.Commit); err != nil {
+		t.Fatal("assembled artifact verification", err)
+	}
 	for i := 1; i <= 3; i++ {
 		if err := os.Remove(filepath.Join(p.Keys, fmt.Sprintf("root-%d.pem", i))); err != nil {
 			t.Fatal(err)
@@ -303,6 +311,22 @@ func TestPublicationAndVerifiedBootstrap(t *testing.T) {
 		put(t, path, get(t, filepath.Join(other, "snapshot.pem")))
 		if publish(p) == nil {
 			t.Fatal("published with a role key missing from the root")
+		}
+	})
+	t.Run("RejectPrivateBootstrapInput", func(t *testing.T) {
+		changed := p
+		changed.ClientScript = filepath.Join(p.Keys, "targets.pem")
+		if publish(changed) == nil {
+			t.Fatal("published a private signing file as a bootstrap")
+		}
+	})
+	t.Run("RejectWritableArtifactDirectory", func(t *testing.T) {
+		if err := os.Chmod(p.Artifacts, 0777); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Chmod(p.Artifacts, 0700)
+		if publish(p) == nil {
+			t.Fatal("accepted an attacker-writable artifact directory")
 		}
 	})
 	if !bytes.Equal(old, get(t, filepath.Join(p.Output, "manifest.txt"))) || strings.TrimSpace(string(get(t, filepath.Join(p.Keys, "sequence")))) != "2" {

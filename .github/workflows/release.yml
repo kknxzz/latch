@@ -1,0 +1,129 @@
+name: Build release candidate
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Stable version (MAJOR.MINOR.PATCH)
+        required: true
+        type: string
+      public_root_base64:
+        description: Independently verified public TUF root JSON, base64 encoded (never private keys)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+
+  native:
+    needs: verify
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux-amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux-arm64
+          - runner: macos-15-intel
+            platform: darwin-amd64
+          - runner: macos-15
+            platform: darwin-arm64
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      PUBLIC_ROOT_BASE64: ${{ inputs.public_root_base64 }}
+      CARGO_NET_GIT_FETCH_WITH_CLI: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: client/go.mod
+          cache: false
+      - name: Install pinned Rust compiler
+        run: rustup toolchain install 1.99.1 --profile minimal --component llvm-tools
+      - name: Prepare public trust input
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$PUBLIC_ROOT_BASE64" | openssl base64 -d -A > "$RUNNER_TEMP/root.json"
+          test -s "$RUNNER_TEMP/root.json"
+          test "$(wc -c < "$RUNNER_TEMP/root.json")" -le 65536
+      - name: Build twice with independent source and compilation directories
+        working-directory: tools/release
+        shell: bash
+        run: |
+          set -euo pipefail
+          for build in first second; do
+            go run . build --source "$GITHUB_WORKSPACE" --source-commit "$GITHUB_SHA" \
+              --version "$RELEASE_VERSION" --root "$RUNNER_TEMP/root.json" \
+              --output "$RUNNER_TEMP/artifacts-$build"
+          done
+          for file in "$RUNNER_TEMP/artifacts-first/"*; do
+            cmp "$file" "$RUNNER_TEMP/artifacts-second/$(basename "$file")"
+          done
+      - name: Retain native artifacts and build receipts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-${{ matrix.platform }}
+          path: ${{ runner.temp }}/artifacts-first/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  assemble:
+    needs: native
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      RELEASE_VERSION: ${{ inputs.version }}
+      PUBLIC_ROOT_BASE64: ${{ inputs.public_root_base64 }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: tools/release/go.mod
+          cache: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: native-*
+          path: ${{ runner.temp }}/candidate
+          merge-multiple: true
+      - name: Verify complete candidate and stage public inputs
+        working-directory: tools/release
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          printf '%s' "$PUBLIC_ROOT_BASE64" | openssl base64 -d -A > "$RUNNER_TEMP/root.json"
+          go run . verify --artifacts "$RUNNER_TEMP/candidate" \
+            --root "$RUNNER_TEMP/root.json" --version "$RELEASE_VERSION" --source-commit "$GITHUB_SHA"
+          cp "$RUNNER_TEMP/root.json" "$RUNNER_TEMP/candidate/root.json"
+          cp ../../client/scripts/install.sh "$RUNNER_TEMP/candidate/start.sh"
+          cp ../../server/scripts/install.sh "$RUNNER_TEMP/candidate/server-install.sh"
+          cp ../../server/scripts/latch-server.service "$RUNNER_TEMP/candidate/latch-server.service"
+          cp ../../LICENSE "$RUNNER_TEMP/candidate/LICENSE"
+      - name: Retain complete unsigned candidate for offline publication
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: latch-candidate-${{ inputs.version }}
+          path: ${{ runner.temp }}/candidate/*
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0

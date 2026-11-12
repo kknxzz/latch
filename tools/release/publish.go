@@ -89,8 +89,14 @@ func atomicMode(path string, data []byte, mode os.FileMode) error {
 	return folder.Sync()
 }
 func ensurePublicDir(dir string) error {
+	_, before := os.Lstat(dir)
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
+	}
+	if errors.Is(before, os.ErrNotExist) {
+		if err := os.Chmod(dir, 0755); err != nil {
+			return err
+		}
 	}
 	info, err := os.Lstat(dir)
 	if err != nil || !info.IsDir() || info.Mode().Perm()&0022 != 0 || !owned(info) {
@@ -230,11 +236,27 @@ func publish(p publication) error {
 	targetKey, snapshotKey, timestampKey := keys["targets"], keys["snapshot"], keys["timestamp"]
 	extras := map[string][]byte{}
 	for _, entry := range []struct{ name, path string }{{"start.sh", p.ClientScript}, {"server-install.sh", p.ServerScript}, {"latch-server.service", p.ServerUnit}, {"LICENSE", p.License}, {"root.json", filepath.Join(p.Keys, "root.json")}, {"publisher.pub", filepath.Join(p.Keys, "publisher.pub")}} {
+		if entry.name != "root.json" && entry.name != "publisher.pub" {
+			absolute, err := filepath.Abs(entry.path)
+			if err != nil {
+				return err
+			}
+			resolved, err := resolvedPath(absolute)
+			if err != nil {
+				return err
+			}
+			if resolved == keysAbs || strings.HasPrefix(resolved, keysAbs+string(os.PathSeparator)) {
+				return errors.New("bootstrap source must not come from the signing directory")
+			}
+		}
 		data, err := readRegular(entry.path, 65536, false)
 		if err != nil {
 			return err
 		}
 		extras[entry.name] = data
+	}
+	if !bytes.HasPrefix(extras["start.sh"], []byte("#!/bin/sh\n")) || !bytes.HasPrefix(extras["server-install.sh"], []byte("#!/bin/sh\n")) || !bytes.HasPrefix(extras["latch-server.service"], []byte("# Managed by Latch installer.\n")) || !bytes.HasPrefix(extras["LICENSE"], []byte("MIT License\n")) {
+		return errors.New("bootstrap inputs must be Latch shell scripts, a managed service unit and MIT license")
 	}
 	if len(extras["latch-server.service"]) > 16384 {
 		return errors.New("server service unit exceeds bootstrap limit")
@@ -283,6 +305,11 @@ func publish(p publication) error {
 			return err
 		}
 		extras[target.Name+".build.json"] = receipt
+		environment, err := readRegular(filepath.Join(p.Artifacts, target.Name+".environment.json"), 4096, false)
+		if err != nil {
+			return err
+		}
+		extras[target.Name+".environment.json"] = environment
 		if err = atomicFile(filepath.Join(p.Output, target.Name), data); err != nil {
 			return err
 		}
@@ -383,11 +410,33 @@ func publish(p publication) error {
 	return nil
 }
 func validateArtifact(p publication, target artifact, root []byte) error {
+	dir, err := os.Lstat(p.Artifacts)
+	if err != nil || !dir.IsDir() || !owned(dir) || dir.Mode().Perm()&0022 != 0 {
+		return errors.New("artifact directory must be owned and not writable by others")
+	}
 	data, err := readRegular(filepath.Join(p.Artifacts, target.Name), 64<<20, false)
 	if err != nil {
 		return err
 	}
-	return validateImage(p, target, root, data)
+	if err = validateImage(p, target, root, data); err != nil {
+		return err
+	}
+	return validateEnvironment(p, target)
+}
+
+func validateEnvironment(p publication, target artifact) error {
+	data, err := readRegular(filepath.Join(p.Artifacts, target.Name+".environment.json"), 4096, false)
+	if err != nil {
+		return err
+	}
+	var environment buildEnvironment
+	if err = decodeObject(data, &environment); err != nil || environment.SourceCommit != p.Commit || environment.SourceEpoch < 1 || environment.Go != "go1.27.4" || environment.OS != target.OS || environment.Arch != target.Arch {
+		return errors.New("native build environment does not match artifact source/platform: " + target.Name)
+	}
+	if target.Module == "latch.local/client/cmd/latch" && (!strings.HasPrefix(environment.Rust, "rustc 1.99.1 ") || environment.CCompiler == "" || (target.OS == "darwin" && environment.SDK == "")) {
+		return errors.New("native client compiler/SDK evidence is incomplete: " + target.Name)
+	}
+	return nil
 }
 func validateImage(p publication, target artifact, root, data []byte) error {
 	if err := validateBuildInfo(target, data); err != nil {
