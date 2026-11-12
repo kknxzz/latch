@@ -66,3 +66,25 @@ from a private inherited file or pipe and exits after successful enrollment.
 No enrollment credential is accepted as a command-line value or environment
 variable. Repeating enrollment with an already registered local identity first
 authenticates that key and does not consume another code.
+
+## Verified terminal updates
+
+Once a signed release repository and publisher trust root are provisioned:
+
+```sh
+latch update --check
+latch update
+```
+
+The repository comes from `update_url` in protected configuration, or an explicit
+`--repository https://mirror.example/client-dist/updates` option. Release builds
+embed a public TUF root. Development builds fail closed unless you explicitly
+provide an independently verified public root with `--trust-root FILE`. Fetching
+a trust root from the same untrusted mirror does not establish publisher identity.
+
+The updater verifies signatures, freshness, hashes, length, version and platform
+before atomic replacement. It has no background polling, rejects downgrades and
+redirects, and preserves the executable after failed verification. Install into
+a directory you own so updates can run without privilege elevation. A genuine
+public release repository and signed initial bootstrap are not yet published.
+The exact interfaces and bounds are in [the update profile](../protocol/UPDATES.md).

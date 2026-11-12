@@ -21,6 +21,8 @@ for module in server client; do
     go mod verify
     staticcheck ./...
     govulncheck ./...
+    case "$module" in server) entry=latch-server ;; client) entry=latch ;; esac
+    (cd "cmd/$entry" && govulncheck -scan=module)
   )
 done
 cargo audit --file "$root/client/crypto-bridge/Cargo.lock" --db "$tools_dir/advisory-db" --deny warnings

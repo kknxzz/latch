@@ -35,6 +35,9 @@ type options struct {
 }
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "update" {
+		return runUpdate(args[1:])
+	}
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println("Latch", version)
 		return nil

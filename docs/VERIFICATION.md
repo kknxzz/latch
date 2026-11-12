@@ -97,8 +97,31 @@ and source revisions are recorded in `DEPENDENCIES.md`.
 An earlier complete security-script attempt passed secret scanning, Go module
 verification, Staticcheck and govulncheck before waiting on the native update's
 cache lock; that duplicate audit was deliberately stopped. It is not a passed
-Rust audit or passed complete script. The full script will be rerun after the
-remaining updater dependencies are finalized.
+Rust audit or passed complete script. After finalizing updater dependencies and
+the module-scan command, the complete `scripts/security-checks.sh` passed: history
+and current-tree secret scans, module verification, Staticcheck, symbol-level and
+module-level Go advisories in both applications, and Rust audit with denied warnings.
+
+## Signed updater verification
+
+The updated `scripts/test-local.sh` passed with the new updater included. Tests
+use dynamically generated threshold-signing keys and a local TLS server. They
+cover check-only operation, installed image permissions, wrong signatures,
+tampered bytes, expired metadata, application downgrade, oversized targets,
+wrong platform/program/version, insufficient root signatures, metadata rollback,
+root rotation across invocations, redirects, cancellation, filesystem locks and
+metadata symlinks.
+
+A separate process test compiles actual Latch 0.1.0 and 0.1.1 executables. It
+verifies `latch update --check` preserves 0.1.0, installs the authenticated 0.1.1
+image, invokes that replacement's `version` command, then rejects a signed
+publisher version mismatch while preserving 0.1.1. The child trusts only the
+fixture's TLS certificate via its environment; no OS certificate store was changed.
+No real publisher key or public release repository was used.
+
+The updater's transitive `golang.org/x/crypto` requirement was raised to 0.59.0
+after scanning detected 17 advisories in unused packages of the older module.
+The subsequent verbose Go scan reports no vulnerabilities, including modules.
 
 ## Initial protocol microbenchmark
 
