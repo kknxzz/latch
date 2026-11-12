@@ -23,6 +23,7 @@ type Config struct {
 	ServerID        string `json:"server_id,omitempty"`
 	IdentityBackend string `json:"identity_backend"`
 	IdentityAccount string `json:"identity_account,omitempty"`
+	Enrolled        bool   `json:"enrolled"`
 	UpdateURL       string `json:"update_url,omitempty"`
 }
 
@@ -114,7 +115,7 @@ func Load(dir string) (Config, error) {
 	if err != nil {
 		return c, err
 	}
-	if !info.Mode().IsRegular() || info.Mode().Perm() != 0600 {
+	if !info.Mode().IsRegular() || info.Mode().Perm() != 0600 || info.Size() > protocol.MaxFrame {
 		return c, ErrInvalid
 	}
 	data, err := os.ReadFile(path)

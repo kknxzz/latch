@@ -85,3 +85,4 @@ func (KeychainBackend) Save(account string, data []byte) error {
 	return nil
 }
 func DefaultBackend(dir string) (Backend, string) { return KeychainBackend{}, "keychain" }
+func NativeBackend() (Backend, error)             { return KeychainBackend{}, nil }
