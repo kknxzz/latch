@@ -15,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"latch.local/server/internal/admin"
 	"latch.local/server/internal/auth"
 	"latch.local/server/internal/config"
 	"latch.local/server/internal/gateway"
@@ -31,6 +32,26 @@ func main() {
 func run(args []string) error {
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println("Latch Server", version)
+		return nil
+	}
+	if len(args) > 0 && args[0] == "enrollment-code" {
+		flags := flag.NewFlagSet("enrollment-code", flag.ContinueOnError)
+		dir := flags.String("state-dir", "", "Private server state directory")
+		if err := flags.Parse(args[1:]); err != nil {
+			return err
+		}
+		if *dir == "" || flags.NArg() != 0 {
+			return errors.New("enrollment-code requires --state-dir")
+		}
+		absolute, err := filepath.Abs(*dir)
+		if err != nil {
+			return err
+		}
+		response, err := admin.CallLocal(context.Background(), absolute, "enrollment.generate")
+		if err != nil {
+			return err
+		}
+		fmt.Println(response.Code)
 		return nil
 	}
 	if len(args) == 0 || args[0] != "serve" {
@@ -78,6 +99,11 @@ func run(args []string) error {
 		return err
 	}
 	defer store.Close()
+	local, err := admin.ListenLocal(store, c.StateDir)
+	if err != nil {
+		return err
+	}
+	defer local.Close()
 	if *enrollmentFile != "" {
 		if !c.Development {
 			return errors.New("enrollment output is development-only")

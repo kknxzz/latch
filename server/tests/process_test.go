@@ -23,7 +23,11 @@ func TestServerProcessLifecycle(t *testing.T) {
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("server build failed: %v\n%s", err, output)
 	}
-	dir := t.TempDir()
+	dir, err := os.MkdirTemp("/tmp", "latch-process-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
 	state := filepath.Join(dir, "state")
 	codeFile := filepath.Join(dir, "enrollment")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
