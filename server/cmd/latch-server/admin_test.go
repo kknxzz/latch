@@ -16,7 +16,7 @@ import (
 
 func credentialsFD(t *testing.T, secret string) int {
 	t.Helper()
-	code, err := hotp.GenerateCode(secret, uint64(time.Now().Unix()/30)-1)
+	code, err := hotp.GenerateCode(secret, uint64(time.Now().Unix()/30))
 	if err != nil {
 		t.Fatal(err)
 	}

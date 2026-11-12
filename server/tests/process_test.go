@@ -17,12 +17,23 @@ import (
 )
 
 func TestServerProcessLifecycle(t *testing.T) {
+	binary := compileServer(t)
+	runDevelopmentProcess(t, binary)
+}
+
+func compileServer(t *testing.T) string {
+	t.Helper()
 	binary := filepath.Join(t.TempDir(), "latch-server")
 	build := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-race", "-o", binary, "./cmd/latch-server")
 	build.Dir = ".."
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("server build failed: %v\n%s", err, output)
 	}
+	return binary
+}
+
+func runDevelopmentProcess(t *testing.T, binary string) {
+	t.Helper()
 	dir, err := os.MkdirTemp("/tmp", "latch-process-")
 	if err != nil {
 		t.Fatal(err)

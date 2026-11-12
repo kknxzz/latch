@@ -32,10 +32,11 @@ type LocalRequest struct {
 	Confirmation string `json:"confirmation,omitempty"`
 }
 type LocalResponse struct {
-	Code      string    `json:"code,omitempty"`
-	ExpiresAt time.Time `json:"expires_at,omitempty"`
-	Error     string    `json:"error,omitempty"`
-	ServerID  string    `json:"server_id,omitempty"`
+	Code             string    `json:"code,omitempty"`
+	ExpiresAt        time.Time `json:"expires_at,omitempty"`
+	Error            string    `json:"error,omitempty"`
+	ServerID         string    `json:"server_id,omitempty"`
+	AdminInitialized bool      `json:"admin_initialized,omitempty"`
 }
 
 // ListenLocal requires the same private directory as the locked database. The
@@ -119,6 +120,8 @@ func (l *Local) handle(conn *net.UnixConn) {
 		switch request.Operation {
 		case "server.info":
 			response.ServerID = l.store.ServerID()
+			_, err := l.store.AdminCredentials()
+			response.AdminInitialized = err == nil
 		case "admin.initialize", "admin.reset":
 			select {
 			case l.credentialSlot <- struct{}{}:

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"unicode/utf8"
 
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -15,6 +16,15 @@ import (
 // ReadSecret restores terminal mode on cancellation. It never invokes a shell or
 // places the value into arguments. select also supports macOS's /dev/tty alias.
 func ReadSecret(ctx context.Context, file *os.File, label string) ([]byte, error) {
+	return readTerminal(ctx, file, label, false)
+}
+
+func ReadLine(ctx context.Context, file *os.File, label string) (string, error) {
+	data, err := readTerminal(ctx, file, label, true)
+	return string(data), err
+}
+
+func readTerminal(ctx context.Context, file *os.File, label string, echo bool) ([]byte, error) {
 	if !term.IsTerminal(int(file.Fd())) {
 		return nil, errors.New("interactive terminal required")
 	}
@@ -84,7 +94,13 @@ func ReadSecret(ctx context.Context, file *os.File, label string) ([]byte, error
 			return nil, context.Canceled
 		case 8, 127:
 			if len(data) > 0 {
-				data = data[:len(data)-1]
+				_, width := utf8.DecodeLastRune(data)
+				end := len(data) - width
+				clear(data[end:])
+				data = data[:end]
+				if echo {
+					_, _ = io.WriteString(file, "\b \b")
+				}
 			}
 			continue
 		}
@@ -93,6 +109,9 @@ func ReadSecret(ctx context.Context, file *os.File, label string) ([]byte, error
 		}
 		if one[0] >= 32 && one[0] != 127 {
 			data = append(data, one[0])
+			if echo {
+				_, _ = file.Write(one[:])
+			}
 		}
 	}
 }

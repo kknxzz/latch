@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/netutil"
 	"latch.local/server/internal/admin"
 	"latch.local/server/internal/auth"
 	"latch.local/server/internal/config"
@@ -40,6 +40,12 @@ func main() {
 	}
 }
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "setup" {
+		return runSetup(args[1:])
+	}
+	if len(args) > 0 && args[0] == "doctor" {
+		return runDoctor(args[1:])
+	}
 	if len(args) > 0 && args[0] == "admin" {
 		return runAdmin(args[1:])
 	}
@@ -121,6 +127,10 @@ func run(args []string) error {
 			return errors.New("initialize administrator credentials locally before production startup")
 		}
 	}
+	material, err := config.PrepareTLS(c)
+	if err != nil {
+		return err
+	}
 	local, err := admin.ListenLocal(store, c.StateDir)
 	if err != nil {
 		return err
@@ -162,7 +172,7 @@ func run(args []string) error {
 	}
 	defer g.Close()
 	// Administration is intentionally not attached to the public listener.
-	server := &http.Server{Addr: c.PublicListen, Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13}, ErrorLog: log.New(httpDiagnostics(func() {
+	server := &http.Server{Addr: c.PublicListen, Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: material.Public, ErrorLog: log.New(httpDiagnostics(func() {
 		if dashboard != nil {
 			dashboard.Record("gateway_http_error", "")
 		}
@@ -172,11 +182,13 @@ func run(args []string) error {
 		return errors.New("could not bind public listener")
 	}
 	defer listener.Close()
+	listener = netutil.LimitListener(listener, c.MaxConnections+32)
 	privateListener, err := net.Listen("tcp", c.AdminListen)
 	if err != nil {
 		return errors.New("could not bind private administrative listener")
 	}
 	defer privateListener.Close()
+	privateListener = netutil.LimitListener(privateListener, 16)
 	origin := strings.TrimSuffix(c.AdminURL, "/")
 	if c.Development {
 		origin = "http://" + privateListener.Addr().String()
@@ -185,15 +197,26 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	privateServer := &http.Server{Handler: dashboard, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13}, ErrorLog: log.New(httpDiagnostics(func() { dashboard.Record("admin_http_error", "") }), "", 0)}
+	privateServer := &http.Server{Handler: dashboard, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: material.Admin, ErrorLog: log.New(httpDiagnostics(func() { dashboard.Record("admin_http_error", "") }), "", 0)}
 	defer privateServer.Close()
 	defer server.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	served := make(chan error, 2)
+	served := make(chan error, 3)
+	if material.Challenge != nil {
+		challenge := &http.Server{Addr: c.ACMEHTTPListen, Handler: material.Challenge, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second, MaxHeaderBytes: 16384, ErrorLog: log.New(httpDiagnostics(func() { dashboard.Record("acme_http_error", "") }), "", 0)}
+		challengeListener, e := net.Listen("tcp", c.ACMEHTTPListen)
+		if e != nil {
+			return errors.New("could not bind ACME HTTP challenge listener")
+		}
+		defer challengeListener.Close()
+		challengeListener = netutil.LimitListener(challengeListener, 32)
+		defer challenge.Close()
+		go func() { served <- challenge.Serve(challengeListener) }()
+	}
 	go func() {
-		if c.TLSMode == "files" {
-			served <- server.ServeTLS(listener, c.CertFile, c.KeyFile)
+		if material.Public != nil {
+			served <- server.ServeTLS(listener, "", "")
 		} else {
 			served <- server.Serve(listener)
 		}
@@ -202,11 +225,14 @@ func run(args []string) error {
 		if c.Development {
 			served <- privateServer.Serve(privateListener)
 		} else {
-			served <- privateServer.ServeTLS(privateListener, c.AdminCertFile, c.AdminKeyFile)
+			served <- privateServer.ServeTLS(privateListener, "", "")
 		}
 	}()
 	fmt.Fprintln(os.Stderr, "Latch gateway listening on", listener.Addr())
 	fmt.Fprintln(os.Stderr, "Latch administration listening on", privateListener.Addr())
+	if err = notifyReady(); err != nil {
+		return err
+	}
 	select {
 	case err = <-served:
 		if !errors.Is(err, http.ErrServerClosed) {
