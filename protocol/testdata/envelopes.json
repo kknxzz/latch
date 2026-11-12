@@ -1,0 +1,17 @@
+[
+ {"name":"empty body","valid":true,"wire":"{\"v\":1,\"type\":\"room.leave\",\"request_id\":\"17\",\"body\":{}}"},
+ {"name":"event","valid":true,"wire":"{\"v\":1,\"type\":\"room.closed\",\"body\":{\"reason\":\"host_disconnected\"}}"},
+ {"name":"duplicate version","valid":false,"wire":"{\"v\":1,\"v\":1,\"type\":\"ok\",\"body\":{}}"},
+ {"name":"escaped duplicate","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":{\"a\":1,\"\\u0061\":2}}"},
+ {"name":"nested duplicate","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":{\"x\":[{\"a\":1,\"a\":2}]}}"},
+ {"name":"unknown field","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":{},\"extra\":1}"},
+ {"name":"unknown type","valid":false,"wire":"{\"v\":1,\"type\":\"ban\",\"body\":{}}"},
+ {"name":"wrong version","valid":false,"wire":"{\"v\":2,\"type\":\"ok\",\"body\":{}}"},
+ {"name":"fractional version","valid":false,"wire":"{\"v\":1.0,\"type\":\"ok\",\"body\":{}}"},
+ {"name":"null body","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":null}"},
+ {"name":"array body","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":[]}"},
+ {"name":"missing body","valid":false,"wire":"{\"v\":1,\"type\":\"ok\"}"},
+ {"name":"trailing object","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"body\":{}}{}"},
+ {"name":"invalid request id","valid":false,"wire":"{\"v\":1,\"type\":\"ok\",\"request_id\":\"hello world\",\"body\":{}}"},
+ {"name":"null envelope","valid":false,"wire":"null"}
+]
