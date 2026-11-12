@@ -1,6 +1,7 @@
 package config
 
 import (
+	"encoding/json"
 	"errors"
 	"net/netip"
 	"net/url"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"latch.local/client/internal/identity"
 	"latch.local/client/internal/protocol"
 )
 
@@ -20,6 +22,7 @@ type Config struct {
 	Development     bool   `json:"development"`
 	ServerID        string `json:"server_id,omitempty"`
 	IdentityBackend string `json:"identity_backend"`
+	IdentityAccount string `json:"identity_account,omitempty"`
 	UpdateURL       string `json:"update_url,omitempty"`
 }
 
@@ -86,9 +89,23 @@ func (c *Config) Validate() error {
 	if c.IdentityBackend != "keychain" && c.IdentityBackend != "file" {
 		return ErrInvalid
 	}
+	if !identity.ValidNickname(c.Nickname) || (c.ServerID != "" && !identity.ValidUUID(c.ServerID)) || (c.IdentityBackend == "keychain" && !identity.ValidUUID(c.IdentityAccount)) {
+		return ErrInvalid
+	}
 	c.ServerURL = base
 	c.Endpoint = endpoint
 	return nil
+}
+
+func Save(dir string, c Config) error {
+	if err := c.Validate(); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(c, "", "  ")
+	if err != nil {
+		return err
+	}
+	return identity.AtomicWrite(dir, "config.json", append(data, '\n'))
 }
 func Load(dir string) (Config, error) {
 	var c Config
