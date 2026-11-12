@@ -101,10 +101,10 @@ Room ID lookup must not enumerate available rooms.
 `retry_after_seconds`. No stack traces or echoed input. Correlate both to requests.
 
 `room.created`: `room_id`, `group_id`, `revision` (0), `epoch` (0), `host_uuid`.
-`room.prepare`: `room_id`, `group_id`, `revision`, `action` (`add`, `remove`,
+`room.prepare`: `room_id`, `group_id`, `host_uuid`, `revision`, `action` (`add`, `remove`,
 `update`), `members` (UUID, key, nickname), optional `key_package` for an add.
 `room.commit`: same coordinates plus MLS `commit`, and `welcome` only to the
-joining device. `room.ready`: room coordinates and current member roster.
+joining device. `room.ready`: room coordinates, `group_id`, `host_uuid`, and current member roster.
 `message.deliver`: room coordinates, `sender_uuid`, `ciphertext`.
 `member.changed`: current nickname mapping. MLS authenticated sender identity
 must agree with the enrolled roster; transport sender labels alone are untrusted.

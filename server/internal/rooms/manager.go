@@ -347,7 +347,7 @@ func (a *actor) prepare(r *room, action, joining string, kp []byte) {
 	for uuid := range r.members {
 		a.peers[uuid].peer.DropQueued(r.id)
 	}
-	body := map[string]any{"room_id": r.id, "group_id": r.groupID, "revision": r.revision, "action": action, "members": a.roster(r)}
+	body := map[string]any{"room_id": r.id, "group_id": r.groupID, "host_uuid": r.host, "revision": r.revision, "action": action, "members": a.roster(r)}
 	if len(kp) > 0 {
 		body["key_package"] = kp
 	}
@@ -448,6 +448,10 @@ func (a *actor) handle(uuid string, e protocol.Envelope) {
 			return
 		}
 		if len(target.pinDigest) > 0 && !hmac.Equal(target.pinDigest, pinDigest(target.pinKey, body.PIN)) {
+			if len(target.attempts)+len(target.bans) >= 10000 && target.attempts[fp] == 0 {
+				a.error(uuid, e.RequestID, "RESOURCE_LIMIT", "Room attempt limit reached.")
+				return
+			}
 			target.attempts[fp]++
 			if target.attempts[fp] >= 3 {
 				target.bans[fp] = true
@@ -572,7 +576,7 @@ func (a *actor) handle(uuid string, e protocol.Envelope) {
 			r.packageBytes = nil
 			r.joining = ""
 			for id := range r.members {
-				a.emit(id, Event{Type: "room.ready", Body: map[string]any{"room_id": r.id, "group_id": r.groupID, "revision": r.revision, "epoch": r.epoch, "members": a.roster(r)}})
+				a.emit(id, Event{Type: "room.ready", Body: map[string]any{"room_id": r.id, "group_id": r.groupID, "host_uuid": r.host, "revision": r.revision, "epoch": r.epoch, "members": a.roster(r)}})
 			}
 		}
 	case "message.send":

@@ -12,6 +12,21 @@ The state directory must have mode `0700` and the database mode `0600`. Existing
 unsafe modes are rejected, not silently changed. No room or conversation data is
 stored in the database.
 
+For a local gateway, run from repository root:
+
+```sh
+sh scripts/dev-local.sh
+```
+
+An isolated temporary code can be requested using `--enrollment-file PATH`, where
+PATH does not already exist. The code is written with mode `0600`, never printed
+to operational logs. Development mode binds only loopback and is explicitly
+required for cleartext transport. Credentials still expire and are single-use.
+
+Production configuration currently supports explicit certificate files or a
+private backend behind an explicitly trusted reverse proxy. The private dashboard
+and automatic TLS wizard are not implemented yet.
+
 The final installer must provide guided setup, systemd installation, private
 dashboard authentication, TLS, idempotent upgrades, and `latch-server doctor`.
 See `../docs/IMPLEMENTATION.md` for the full acceptance criteria.
