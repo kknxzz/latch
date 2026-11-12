@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+.tools/
+.local/
+bin/
+dist/
+target/
+*.db
+*.db.lock
+*.key
+*.pem
+*.prof
+*.test
+.DS_Store
