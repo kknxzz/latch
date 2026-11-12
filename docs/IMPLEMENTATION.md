@@ -15,7 +15,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | In progress | Setup/doctor, real TLS process and terminal cancellation tests pass; installer/unit written; fresh VM, ACME issuance, signed install/update and mirrors remain |
 | M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
-| M11: security/resource review | In progress | Go static/vulnerability and secret scans pass locally; Rust advisories found, upstream fixes under qualification; leak/load review remains |
+| M11: security/resource review | In progress | Go static/vulnerability, secret scans and updated Rust advisory scan pass locally; platform qualification, independent review and leak/load review remain |
 | M12: reproducible signed releases | Pending | All platform tests; two independent builds; signatures and provenance |
 
 ## Required final behavior

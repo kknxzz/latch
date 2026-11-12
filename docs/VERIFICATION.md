@@ -88,13 +88,17 @@ findings; the public Cargo package-name false positive is documented in
 `DEPENDENCIES.md`. Actionlint `v1.7.12` accepted the CI workflow. These checks ran
 locally; the hosted platform matrix has not run.
 
-`cargo-audit 0.23.0` loaded 1490 RustSec advisories and failed with three
-vulnerabilities and one denied unmaintained warning. The precise graph and
-qualification candidate are recorded in `DEPENDENCIES.md`. This remains a release
-gate. A later complete security-script attempt passed secret scanning, Go module
+The initial `cargo-audit 0.23.0` scan loaded 1490 RustSec advisories and failed with
+three vulnerabilities and one denied unmaintained warning. Exact upstream
+dependency pins now remove all four findings; a new audit with `--deny warnings`
+passed, followed by the complete native/Go test, race and static suite. The graph
+and source revisions are recorded in `DEPENDENCIES.md`.
+
+An earlier complete security-script attempt passed secret scanning, Go module
 verification, Staticcheck and govulncheck before waiting on the native update's
 cache lock; that duplicate audit was deliberately stopped. It is not a passed
-Rust audit or passed complete script.
+Rust audit or passed complete script. The full script will be rerun after the
+remaining updater dependencies are finalized.
 
 ## Initial protocol microbenchmark
 

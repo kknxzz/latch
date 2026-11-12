@@ -29,16 +29,18 @@ The first executed RustSec scan on 2026-11-12 found:
 
 Latch selects the X25519/Ed25519 MLS suite and rejects other suites. That narrows
 exposure, but is not used to suppress these findings. The check denies warnings
-as well as vulnerabilities. The release remains gated until the locked graph is
-fixed and tested.
+as well as vulnerabilities; none are ignored.
 
 The qualification candidate pins the official OpenMLS provider/credential/storage
 crates to upstream revision
 `6100df3fb1d8c3eeab53e349fcbd621f98c44fe2`, containing the maintainers' crypto
 dependency migrations. The released MLS protocol crate stays at 0.9.2. This is
-not a homemade provider, primitive patch or protocol replacement. The updated
-graph is still being resolved and must pass audit, native tests, full process
-tests and platform qualification before release. Replace these Git patches with
+not a homemade provider, primitive patch or protocol replacement. The cfg(hax)-only
+`core-models` proof dependency also pins its official upstream migration to hax
+0.4 at libcrux revision `124d5987726715cfe2ce8da52a3ad1f1a0a0fb1e`, removing
+`proc-macro-error2` entirely from the lockfile. The updated graph passes RustSec
+audit with denied warnings, native tests and the local process suite. Platform
+qualification and integration review remain required. Replace these Git patches with
 appropriate published upstream releases when available and verified.
 
 ## Secret scan scope
