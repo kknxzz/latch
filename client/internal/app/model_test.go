@@ -282,3 +282,28 @@ func TestSecretInputBoundsAndSessionCleanup(t *testing.T) {
 		t.Fatal("native state retained")
 	}
 }
+
+func TestNativeSessionFailureEndsApplicationSession(t *testing.T) {
+	server, _ := identity.NewUUID()
+	a := newAgent(t, server, "Alice")
+	b := newAgent(t, server, "Bob")
+	createRoom(t, a)
+	add(t, a, b)
+	if err := a.m.Input("native failure canary"); err != nil {
+		t.Fatal(err)
+	}
+	request := a.s.take(t, "message.send")
+	var body protocol.Message
+	if json.Unmarshal(request.body, &body) != nil {
+		t.Fatal("invalid message")
+	}
+	body.SenderUUID = a.id.UUID
+	if err := b.m.session.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, _ := protocol.Encode("message.deliver", "", body)
+	e, _ := protocol.Decode(data)
+	if err := b.m.Handle(e); err != ErrSecurity {
+		t.Fatal("unavailable native session treated as an ordinary ciphertext rejection", err)
+	}
+}

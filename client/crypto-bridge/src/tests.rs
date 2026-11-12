@@ -110,3 +110,26 @@ fn input_and_session_bounds() {
         assert!(b.process_commit(&bytes, &[]).is_err());
     }
 }
+
+#[test]
+fn rejects_non_basic_credentials_even_with_matching_identity_bytes() {
+    let (mut a, _) = device("alice");
+    let (b, bi) = device("bob");
+    a.create(&[1; 16]).unwrap();
+    let credential = CredentialWithKey {
+        credential: Credential::new(CredentialType::X509, bi.credential.clone()),
+        signature_key: bi.public_key.clone().into(),
+    };
+    let kp = KeyPackage::builder()
+        .leaf_node_capabilities(Capabilities::new(
+            None,
+            None,
+            None,
+            None,
+            Some(&[CredentialType::Basic, CredentialType::X509]),
+        ))
+        .build(CIPHERSUITE, &b.provider, &b.signer, credential)
+        .unwrap();
+    let bytes = kp.key_package().tls_serialize_detached().unwrap();
+    assert!(matches!(a.add(&bytes, &bi), Err(Error::Membership)));
+}

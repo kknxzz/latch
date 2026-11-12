@@ -484,6 +484,9 @@ func (m *Model) Handle(e protocol.Envelope) error {
 		}
 		plain, err := m.session.Decrypt(body.Ciphertext)
 		if err != nil {
+			if !errors.Is(err, crypto.ErrCrypto) && !errors.Is(err, crypto.ErrInvalid) {
+				return ErrSecurity
+			}
 			m.notice("Encrypted message rejected.")
 			return nil
 		}

@@ -43,7 +43,17 @@ fn boundary(f: impl FnOnce() -> Result<()>) -> i32 {
         Ok(Err(Error::State)) => 2,
         Ok(Err(Error::Membership)) => 3,
         Ok(Err(Error::Crypto)) => 4,
-        Err(_) => 5,
+        Err(_) => {
+            // A panic may interrupt an MLS mutation while the registry lock is
+            // held. Do not leave poisoned, still-referenced room secrets behind
+            // or permit any partially mutated session to be used again.
+            let mut r = registry()
+                .lock()
+                .unwrap_or_else(|poison| poison.into_inner());
+            r.sessions.clear();
+            registry().clear_poison();
+            5
+        }
     }
 }
 
@@ -273,8 +283,10 @@ pub unsafe extern "C" fn latch_buffer_free(buffer: Buffer) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    static TEST_LOCK: Mutex<()> = Mutex::new(());
     #[test]
     fn invalid_buffers_and_stale_handles() {
+        let _guard = TEST_LOCK.lock().unwrap();
         assert_eq!(
             unsafe {
                 latch_session_new(
@@ -305,10 +317,41 @@ mod tests {
     }
     #[test]
     fn packet_bounds() {
+        let _guard = TEST_LOCK.lock().unwrap();
         assert!(fields(&[0, 0, 0, 2, 1]).is_err());
         assert!(fields(&[0]).is_err());
         assert!(identities(&[]).is_err());
         let p = pack(&[b"a", b"bc"]).unwrap();
         assert_eq!(fields(&p).unwrap(), vec![b"a".as_slice(), b"bc".as_slice()]);
+    }
+
+    #[test]
+    fn panic_discards_sessions_and_recovers_registry() {
+        let _guard = TEST_LOCK.lock().unwrap();
+        let seed = [17; 32];
+        let key = ed25519_dalek::SigningKey::from_bytes(&seed)
+            .verifying_key()
+            .to_bytes()
+            .to_vec();
+        let session = Session::new(
+            Identity {
+                credential: b"panic test".to_vec(),
+                public_key: key,
+            },
+            &seed,
+        )
+        .unwrap();
+        registry()
+            .lock()
+            .unwrap()
+            .sessions
+            .insert(u64::MAX, session);
+        let status = boundary(|| {
+            let _guard = registry().lock().unwrap();
+            panic!("synthetic native failure");
+        });
+        assert_eq!(status, 5);
+        assert!(!registry().is_poisoned());
+        assert!(registry().lock().unwrap().sessions.is_empty());
     }
 }

@@ -145,6 +145,29 @@ func TestRejectMismatchedIdentityKey(t *testing.T) {
 	}
 }
 
+func TestEpochProbeBeforeJoinDoesNotConsumeSession(t *testing.T) {
+	a, ai := device(t, "alice")
+	b, bi := device(t, "bob")
+	group := bytes.Repeat([]byte{7}, 16)
+	if err := a.Create(group); err != nil {
+		t.Fatal(err)
+	}
+	kp, err := b.KeyPackage()
+	if err != nil {
+		t.Fatal(err)
+	}
+	change, err := a.Add(kp, bi)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = b.Epoch(); !errors.Is(err, ErrState) {
+		t.Fatal("new joining session unexpectedly has an epoch", err)
+	}
+	if err = b.Join(change.Welcome, group, ai.PublicKey, []Identity{ai, bi}); err != nil {
+		t.Fatal("state probe consumed joining session", err)
+	}
+}
+
 func FuzzPacket(f *testing.F) {
 	f.Add([]byte{0, 0, 0, 1, 1})
 	f.Fuzz(func(t *testing.T, b []byte) {

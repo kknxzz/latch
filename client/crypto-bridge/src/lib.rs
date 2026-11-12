@@ -171,7 +171,7 @@ impl Session {
             .map_err(|_| Error::Crypto)?
             .into_group(&self.provider)
             .map_err(|_| Error::Crypto)?;
-        if group.group_id().as_slice() != group_id {
+        if group.group_id().as_slice() != group_id || group.ciphersuite() != CIPHERSUITE {
             return Err(Error::Membership);
         }
         validate_roster(&group, expected)?;
@@ -210,7 +210,12 @@ impl Session {
 
     pub fn add(&mut self, package: &[u8], expected: &Identity) -> Result<Change> {
         self.require_host()?;
-        if package.is_empty() || package.len() > MAX_INPUT {
+        if package.is_empty()
+            || package.len() > MAX_INPUT
+            || expected.public_key.len() != 32
+            || expected.credential.is_empty()
+            || expected.credential.len() > 256
+        {
             return Err(Error::Invalid);
         }
         let kp = KeyPackageIn::tls_deserialize_exact(package)
@@ -218,6 +223,7 @@ impl Session {
             .validate(self.provider.crypto(), ProtocolVersion::Mls10)
             .map_err(|_| Error::Crypto)?;
         if kp.ciphersuite() != CIPHERSUITE
+            || kp.leaf_node().credential().credential_type() != CredentialType::Basic
             || kp.leaf_node().credential().serialized_content() != expected.credential
             || kp.leaf_node().signature_key().as_slice() != expected.public_key
         {
@@ -362,12 +368,22 @@ impl Session {
 }
 
 fn validate_roster(group: &MlsGroup, expected: &[Identity]) -> Result<()> {
-    let actual: Vec<_> = group.members().map(|m| member_identity(&m)).collect();
-    if expected.is_empty() || expected.len() > MAX_MEMBERS || actual.len() != expected.len() {
+    if expected.is_empty() || expected.len() > MAX_MEMBERS {
         return Err(Error::Membership);
     }
+    let members: Vec<_> = group.members().take(MAX_MEMBERS + 1).collect();
+    if members.len() != expected.len()
+        || members
+            .iter()
+            .any(|m| m.credential.credential_type() != CredentialType::Basic)
+    {
+        return Err(Error::Membership);
+    }
+    let actual: Vec<_> = members.iter().map(member_identity).collect();
     for (index, id) in expected.iter().enumerate() {
         if id.public_key.len() != 32
+            || id.credential.is_empty()
+            || id.credential.len() > 256
             || expected[..index]
                 .iter()
                 .any(|i| i.public_key == id.public_key || i.credential == id.credential)

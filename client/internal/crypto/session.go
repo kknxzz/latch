@@ -119,7 +119,7 @@ func (s *Session) call(op uint32, input []byte) ([]byte, error) {
 	err := status(C.latch_execute(C.uint64_t(s.handle), C.uint32_t(op), ptr(input), C.size_t(len(input)), &out))
 	runtime.KeepAlive(input)
 	if err != nil {
-		if op >= 2 && op <= 7 {
+		if (op >= 2 && op <= 7) || errors.Is(err, ErrNative) {
 			_ = C.latch_session_free(C.uint64_t(s.handle))
 			s.handle = 0
 		}

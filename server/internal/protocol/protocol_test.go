@@ -66,6 +66,40 @@ func TestTranscriptBoundaries(t *testing.T) {
 	}
 }
 
+func TestRecursiveSchemaAndCanonicalBinary(t *testing.T) {
+	var body struct {
+		Members []Member `json:"members"`
+	}
+	for _, data := range []string{
+		`{"members":[{"uuid":"a","UUID":"b","public_key":"AQ=="}]}`,
+		`{"members":[{"uuid":"a","public_key":[1]}]}`,
+		`{"members":[{"uuid":"a","public_key":"AR=="}]}`,
+		`{"members":[{"uuid":"a","public_key":"AQ==\n"}]}`,
+	} {
+		if Strict([]byte(data), &body) == nil {
+			t.Fatalf("nonconforming nested schema accepted: %s", data)
+		}
+	}
+	if err := Strict([]byte(`{"members":[{"uuid":"a","public_key":"AQ=="}]}`), &body); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestUnicodeEscapes(t *testing.T) {
+	for _, value := range []string{`"\ud800"`, `"\udc00"`, `"\ud800x"`, `"\ud800\u0041"`} {
+		var got string
+		if Strict([]byte(value), &got) == nil {
+			t.Fatal("unpaired surrogate accepted")
+		}
+	}
+	for _, value := range []string{`"\ud83d\ude00"`, `"\\ud800"`, `"plain"`} {
+		var got string
+		if err := Strict([]byte(value), &got); err != nil {
+			t.Fatal("valid Unicode rejected", err)
+		}
+	}
+}
+
 func FuzzDecode(f *testing.F) {
 	f.Add([]byte(`{"v":1,"type":"room.leave","body":{}}`))
 	f.Add([]byte(`null`))

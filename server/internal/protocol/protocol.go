@@ -4,6 +4,7 @@ package protocol
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -74,7 +75,7 @@ func Encode(kind, id string, body any) ([]byte, error) {
 // Strict rejects duplicate decoded keys, excessive nesting, malformed UTF-8,
 // unknown struct fields, and trailing values. Error messages never echo input.
 func Strict(data []byte, dst any) error {
-	if len(data) == 0 || len(data) > MaxFrame || !utf8.Valid(data) {
+	if len(data) == 0 || len(data) > MaxFrame || !utf8.Valid(data) || !validEscapes(data) {
 		return ErrInvalid
 	}
 	scan := json.NewDecoder(bytes.NewReader(data))
@@ -91,30 +92,154 @@ func Strict(data []byte, dst any) error {
 	if t == nil || t.Kind() != reflect.Pointer {
 		return ErrInvalid
 	}
-	t = t.Elem()
-	if t.Kind() == reflect.Struct {
-		var object map[string]json.RawMessage
-		if json.Unmarshal(data, &object) != nil || object == nil {
-			return ErrInvalid
-		}
-		allowed := make(map[string]bool)
-		for i := 0; i < t.NumField(); i++ {
-			field := t.Field(i)
-			tag := strings.Split(field.Tag.Get("json"), ",")[0]
-			if tag != "" && tag != "-" {
-				allowed[tag] = true
-			}
-		}
-		for key := range object {
-			if !allowed[key] {
-				return ErrInvalid
-			}
-		}
+	if schema(data, t.Elem()) != nil {
+		return ErrInvalid
 	}
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dst); err != nil {
 		return ErrInvalid
+	}
+	return nil
+}
+
+// encoding/json replaces unpaired UTF-16 surrogates with U+FFFD. Reject them
+// rather than silently changing a peer's string before validation or display.
+func validEscapes(data []byte) bool {
+	hex := func(b byte) (uint16, bool) {
+		switch {
+		case b >= '0' && b <= '9':
+			return uint16(b - '0'), true
+		case b >= 'a' && b <= 'f':
+			return uint16(b - 'a' + 10), true
+		case b >= 'A' && b <= 'F':
+			return uint16(b - 'A' + 10), true
+		}
+		return 0, false
+	}
+	unit := func(b []byte) (uint16, bool) {
+		if len(b) < 4 {
+			return 0, false
+		}
+		var value uint16
+		for _, c := range b[:4] {
+			n, ok := hex(c)
+			if !ok {
+				return 0, false
+			}
+			value = value<<4 | n
+		}
+		return value, true
+	}
+	for i := 0; i < len(data); i++ {
+		if data[i] != '\\' {
+			continue
+		}
+		i++
+		if i >= len(data) {
+			return false
+		}
+		if data[i] != 'u' {
+			continue
+		}
+		value, ok := unit(data[i+1:])
+		if !ok {
+			return false
+		}
+		i += 4
+		if value >= 0xdc00 && value <= 0xdfff {
+			return false
+		}
+		if value >= 0xd800 && value <= 0xdbff {
+			if i+6 >= len(data) || data[i+1] != '\\' || data[i+2] != 'u' {
+				return false
+			}
+			low, ok := unit(data[i+3:])
+			if !ok || low < 0xdc00 || low > 0xdfff {
+				return false
+			}
+			i += 6
+		}
+	}
+	return true
+}
+
+var rawMessageType = reflect.TypeOf(json.RawMessage{})
+var unmarshalerType = reflect.TypeOf((*json.Unmarshaler)(nil)).Elem()
+
+// schema closes encoding/json's permissive alias and []byte decoding behavior
+// recursively. Raw message bodies are checked when decoded into their own schema.
+func schema(data []byte, t reflect.Type) error {
+	if t == rawMessageType {
+		return nil
+	}
+	for t.Kind() == reflect.Pointer {
+		t = t.Elem()
+	}
+	if reflect.PointerTo(t).Implements(unmarshalerType) {
+		return nil
+	}
+	switch t.Kind() {
+	case reflect.Struct:
+		var object map[string]json.RawMessage
+		if json.Unmarshal(data, &object) != nil || object == nil {
+			return ErrInvalid
+		}
+		allowed := make(map[string]reflect.Type)
+		for i := 0; i < t.NumField(); i++ {
+			field := t.Field(i)
+			tag := strings.Split(field.Tag.Get("json"), ",")[0]
+			if field.IsExported() && tag != "" && tag != "-" {
+				allowed[tag] = field.Type
+			}
+		}
+		for key, value := range object {
+			field, ok := allowed[key]
+			if !ok || schema(value, field) != nil {
+				return ErrInvalid
+			}
+		}
+	case reflect.Slice:
+		if t.Elem().Kind() == reflect.Uint8 {
+			var encoded string
+			if json.Unmarshal(data, &encoded) != nil {
+				return ErrInvalid
+			}
+			decoded, err := base64.StdEncoding.Strict().DecodeString(encoded)
+			if err != nil || base64.StdEncoding.EncodeToString(decoded) != encoded {
+				return ErrInvalid
+			}
+			return nil
+		}
+		var values []json.RawMessage
+		if json.Unmarshal(data, &values) != nil {
+			return ErrInvalid
+		}
+		for _, value := range values {
+			if schema(value, t.Elem()) != nil {
+				return ErrInvalid
+			}
+		}
+	case reflect.Array:
+		var values []json.RawMessage
+		if json.Unmarshal(data, &values) != nil || len(values) != t.Len() {
+			return ErrInvalid
+		}
+		for _, value := range values {
+			if schema(value, t.Elem()) != nil {
+				return ErrInvalid
+			}
+		}
+	case reflect.Map:
+		var object map[string]json.RawMessage
+		if json.Unmarshal(data, &object) != nil {
+			return ErrInvalid
+		}
+		for _, value := range object {
+			if schema(value, t.Elem()) != nil {
+				return ErrInvalid
+			}
+		}
 	}
 	return nil
 }
