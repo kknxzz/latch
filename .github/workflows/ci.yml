@@ -69,3 +69,57 @@ jobs:
         run: sh scripts/install-security-tools.sh
       - name: Scan dependencies and secrets
         run: sh scripts/security-checks.sh
+
+  native-fuzz:
+    name: Native MLS sanitizer fuzzing
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install pinned release compiler
+        run: rustup toolchain install 1.99.1 --profile minimal
+      - name: Install pinned sanitizer harness
+        run: sh scripts/install-fuzz-tools.sh
+      - name: Exercise native parsers
+        shell: bash
+        run: |
+          set -euo pipefail
+          duration=60
+          if [ "$GITHUB_EVENT_NAME" = schedule ]; then duration=1800; fi
+          sh scripts/fuzz-native.sh "$duration"
+      - name: Retain synthetic failure inputs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: native-fuzz-failures
+          path: .local/fuzz/native/artifacts/*
+          if-no-files-found: ignore
+          retention-days: 14
+
+  installer-vm:
+    name: Disposable Linux systemd installation
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: server/go.mod
+          cache: false
+      - name: Test actual install, upgrade, rollback and uninstall in this ephemeral VM
+        working-directory: server
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo env PATH="$PATH" GOENV=off GOTOOLCHAIN=local \
+            GOCACHE="$RUNNER_TEMP/root-go-cache" GOMODCACHE="$RUNNER_TEMP/root-go-mod" \
+            LATCH_INSTALLER_VM_TEST=1 \
+            go test -race -count=1 -timeout=5m -run='^TestSystemdInstallerLifecycle$' -v ./tests

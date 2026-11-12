@@ -80,6 +80,22 @@ fn decode_message(bytes: &[u8]) -> Result<MlsMessageIn> {
     MlsMessageIn::tls_deserialize_exact(bytes).map_err(|_| Error::Invalid)
 }
 
+// Compiled only by the separate sanitizer harness, never by release builds.
+#[cfg(feature = "fuzzing")]
+pub fn fuzz_input(bytes: &[u8]) {
+    if bytes.len() > 65536 {
+        return;
+    }
+    let _ = decode_message(bytes);
+    if bytes.len() <= MAX_INPUT
+        && let Ok(package) = KeyPackageIn::tls_deserialize_exact(bytes)
+    {
+        let provider = OpenMlsRustCrypto::default();
+        let _ = package.validate(provider.crypto(), ProtocolVersion::Mls10);
+    }
+    ffi::fuzz_fields(bytes);
+}
+
 fn member_identity(member: &Member) -> Identity {
     Identity {
         credential: member.credential.serialized_content().to_vec(),

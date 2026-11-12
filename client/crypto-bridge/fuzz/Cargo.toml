@@ -1,0 +1,31 @@
+[package]
+name = "latch-crypto-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "MIT"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "=0.4.13"
+latch-crypto = { path = "..", features = ["fuzzing"] }
+
+[[bin]]
+name = "mls_input"
+path = "fuzz_targets/mls_input.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]
+members = ["."]
+
+# Use the exact production provider revisions in this independent harness.
+[patch.crates-io]
+openmls_rust_crypto = { git = "https://github.com/openmls/openmls", rev = "6100df3fb1d8c3eeab53e349fcbd621f98c44fe2" }
+openmls_basic_credential = { git = "https://github.com/openmls/openmls", rev = "6100df3fb1d8c3eeab53e349fcbd621f98c44fe2" }
+openmls_traits = { git = "https://github.com/openmls/openmls", rev = "6100df3fb1d8c3eeab53e349fcbd621f98c44fe2" }
+openmls_memory_storage = { git = "https://github.com/openmls/openmls", rev = "6100df3fb1d8c3eeab53e349fcbd621f98c44fe2" }
+core-models = { git = "https://github.com/cryspen/libcrux", rev = "124d5987726715cfe2ce8da52a3ad1f1a0a0fb1e" }

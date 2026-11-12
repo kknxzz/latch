@@ -127,6 +127,15 @@ fn identities(data: &[u8]) -> Result<Vec<Identity>> {
         .collect())
 }
 
+#[cfg(feature = "fuzzing")]
+pub(crate) fn fuzz_fields(data: &[u8]) {
+    if let Ok(decoded) = fields(data) {
+        let encoded = pack(&decoded).expect("bounded parsed fields must re-encode");
+        assert_eq!(encoded, data);
+    }
+    let _ = identities(data);
+}
+
 fn change(c: Change) -> Result<Vec<u8>> {
     pack(&[&c.commit, &c.welcome, &c.epoch.to_be_bytes()])
 }

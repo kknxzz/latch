@@ -32,6 +32,41 @@ fn pair() -> (Session, Identity, Session, Identity) {
 }
 
 #[test]
+#[ignore = "explicit synthetic fuzz-corpus export"]
+fn export_fuzz_corpus() {
+    use std::{fs, path::PathBuf};
+    let directory = PathBuf::from(
+        std::env::var("LATCH_FUZZ_CORPUS").expect("set an explicit corpus directory"),
+    );
+    assert!(directory.is_absolute());
+    fs::create_dir_all(&directory).unwrap();
+    let (mut host, host_id) = device("host-fuzz");
+    let (mut member, member_id) = device("member-fuzz");
+    host.create(&[17; 16]).unwrap();
+    let package = member.key_package().unwrap();
+    let change = host.add(&package, &member_id).unwrap();
+    member
+        .join(
+            &change.welcome,
+            &[17; 16],
+            &host_id.public_key,
+            &[host_id.clone(), member_id],
+        )
+        .unwrap();
+    fs::write(directory.join("key-package"), &package).unwrap();
+    fs::write(directory.join("welcome"), change.welcome).unwrap();
+    fs::write(directory.join("commit"), change.commit).unwrap();
+    fs::write(
+        directory.join("application"),
+        host.encrypt(b"synthetic fuzz seed").unwrap(),
+    )
+    .unwrap();
+    let mut framed = (package.len() as u32).to_be_bytes().to_vec();
+    framed.extend_from_slice(&package);
+    fs::write(directory.join("abi-packet"), framed).unwrap();
+}
+
+#[test]
 fn exchange_tamper_replay_and_update() {
     let (mut a, ai, mut b, bi) = pair();
     let ciphertext = a.encrypt(b"confidential canary").unwrap();

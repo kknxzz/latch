@@ -5,6 +5,9 @@ edition = "2024"
 license = "MIT"
 publish = false
 
+[features]
+fuzzing = []
+
 [lib]
 crate-type = ["staticlib", "rlib"]
 

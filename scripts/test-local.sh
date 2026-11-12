@@ -6,7 +6,8 @@ sh "$root/scripts/build-crypto.sh"
   cd "$root/client/crypto-bridge"
   cargo test --locked
   cargo fmt --check
-  cargo clippy --locked --all-targets -- -D warnings
+  cargo fmt --manifest-path fuzz/Cargo.toml --check
+  cargo clippy --locked --all-targets --all-features -- -D warnings
 )
 for module in server client tools/release; do
   (

@@ -29,3 +29,4 @@ for module in server client tools/release; do
   )
 done
 cargo audit --file "$root/client/crypto-bridge/Cargo.lock" --db "$tools_dir/advisory-db" --deny warnings
+cargo audit --file "$root/client/crypto-bridge/fuzz/Cargo.lock" --db "$tools_dir/advisory-db" --deny warnings
