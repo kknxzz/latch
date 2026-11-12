@@ -158,6 +158,32 @@ The updater's transitive `golang.org/x/crypto` requirement was raised to 0.59.0
 after scanning detected 17 advisories in unused packages of the older module.
 The subsequent verbose Go scan reports no vulnerabilities, including modules.
 
+## Native build reproducibility
+
+The native release builder was exercised twice on this macOS ARM64 host using
+source commit `2d97c451371d13392dcc0a5d0dbff5ab2128266d`, version `0.1.0`,
+and one temporary test public root. Each invocation exported the Git commit to a
+different temporary directory and used fresh Go and Cargo compilation caches.
+Dependency downloads were disabled; previously verified source caches were used.
+Both native executables passed the JSON version/platform/protocol/root probe.
+`cmp` found identical bytes, including the native MLS library:
+
+```text
+SHA-256: caefb6374371e35bb51e82b5a193d10432274562ef299f8c39df7b0448633520
+Size: 19,390,130 bytes
+Public root SHA-256: 33b640e90365d1162f2ddd279180d8e6c374ef0a49d7adab5cbc2bea94c5d0b0
+Go: go1.27.4
+Rust: rustc 1.99.1 (58cf8f9c3 2026-10-13)
+Compiler: Apple clang 21.0.0 (clang-2100.4.1.1)
+SDK: 27.2
+```
+
+This establishes isolated same-host reproducibility for this input, not another
+operator's build or other target platforms. The temporary test authority is not
+a production signing root, and these binaries were not published. Removing the
+Mach-O UUID was tried and rejected because the current dynamic loader requires
+it; the final builder preserves the native linker's deterministic UUID.
+
 ## Initial protocol microbenchmark
 
 Apple M4, 10 logical CPUs, 24 GiB RAM; macOS/Go versions above. Command, from

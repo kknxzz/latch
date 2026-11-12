@@ -42,6 +42,36 @@ The second setting is client-only. Build with `-trimpath`; Go deliberately omits
 linker flags from build information in this mode. The publisher therefore checks
 native execution receipts instead of pretending those omitted flags are present.
 
+The native build command applies those settings and exports only the requested
+Git commit into a fresh private source directory:
+
+```sh
+cd tools/release
+go run . build --source /absolute/reviewed/checkout \
+  --source-commit REVIEWED_40_HEX_COMMIT --version 0.1.0 \
+  --root /absolute/public/root.json --output /absolute/empty/artifacts
+```
+
+It requires Go 1.27.4 and, for clients, Rust 1.99.1 plus a native C compiler. It
+uses fresh Go/Cargo compilation caches, normalizes source/compiler paths,
+disables incremental compilation, sets `SOURCE_DATE_EPOCH` to the source commit
+time, trims Go paths, strips debug symbols and removes the Go build ID. macOS
+retains the required content-derived Mach-O UUID. Downloaded dependency sources
+can be cached; dependency lockfiles remain enforced. No signing private key is
+read during a build. Native execution checks and receipts run automatically.
+
+`--component client` builds only the client. On Linux, `--component server`
+builds only the server with cgo disabled and does not require Rust or a C compiler.
+The default `all` builds the native client and, on Linux, the native server.
+Output must be an empty private directory. `build-environment.json` records the
+commit, source time, Go/Rust/compiler versions and selected macOS SDK.
+
+Run the command again with a different output directory and compare each binary
+and receipt with `cmp`. Separate invocations export different source directories
+and compile from fresh caches. The compiler, SDK/libc, public root and source
+commit must match. A repeated build on one machine is useful evidence, but
+independent operator rebuilds and all target-platform tests remain required.
+
 On each matching native runner, inspect its own locally built executable:
 
 ```sh

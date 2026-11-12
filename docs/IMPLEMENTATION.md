@@ -16,7 +16,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M9: installers and updates | In progress | Setup/doctor/TLS/PTY, actual TUF self-update and signed client install/enrollment pass; publisher and bootstrap contracts pass; fresh VM, ACME issuance, real publication and mirror qualification remain |
 | M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
 | M11: security/resource review | In progress | Go static/vulnerability, secret scans and updated Rust advisory scan pass locally; platform qualification, independent review and leak/load review remain |
-| M12: reproducible signed releases | Pending | All platform tests; two independent builds; signatures and provenance |
+| M12: reproducible signed releases | In progress | Two isolated native macOS ARM64 builds match byte-for-byte; native builder and receipts implemented; other platforms, independent operator rebuilds and genuine signatures/publication remain |
 
 ## Required final behavior
 

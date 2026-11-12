@@ -16,11 +16,26 @@ func main() {
 }
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: latch-release init|inspect|publish")
+		return errors.New("usage: latch-release build|init|inspect|publish")
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	keys := flags.String("keys-dir", "", "Protected operator signing directory")
 	switch args[0] {
+	case "build":
+		b := buildOptions{}
+		flags.StringVar(&b.Source, "source", "", "Repository containing the reviewed commit")
+		flags.StringVar(&b.Output, "output", "", "Empty absolute native artifact directory")
+		flags.StringVar(&b.Root, "root", "", "Independently verified public TUF root")
+		flags.StringVar(&b.Version, "version", "", "Stable release version")
+		flags.StringVar(&b.Commit, "source-commit", "", "Exact reviewed source commit")
+		flags.StringVar(&b.Component, "component", "all", "Build client, server or all native components")
+		if err := flags.Parse(args[1:]); err != nil {
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected arguments")
+		}
+		return buildNative(b)
 	case "inspect":
 		binary := flags.String("binary", "", "Absolute locally built executable path")
 		target := flags.String("target", "", "Exact native artifact name")
