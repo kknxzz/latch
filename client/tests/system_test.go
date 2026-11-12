@@ -112,10 +112,11 @@ func compile(t *testing.T, dir, target string) string {
 	}
 	return binary
 }
-func startServer(t *testing.T, ctx context.Context, binary, state, listen string) *process {
+func startServer(t *testing.T, ctx context.Context, binary, state, listen string, extra ...string) *process {
 	t.Helper()
 	out := &output{changed: make(chan struct{}, 1)}
-	cmd := exec.CommandContext(ctx, binary, "serve", "--dev", "--state-dir", state, "--listen", listen, "--admin-listen", "127.0.0.1:0")
+	args := []string{"serve", "--dev", "--state-dir", state, "--listen", listen, "--admin-listen", "127.0.0.1:0"}
+	cmd := exec.CommandContext(ctx, binary, append(args, extra...)...)
 	cmd.Stdout = out
 	cmd.Stderr = out
 	p := &process{cmd: cmd, out: out}

@@ -60,6 +60,22 @@ func TestProductionTLSProcess(t *testing.T) {
 	}
 	defer file.Close()
 	configuration, state := filepath.Join(dir, "configuration", "server.json"), filepath.Join(dir, "state")
+	assets := filepath.Join(dir, "public")
+	if err = os.Mkdir(assets, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Chmod(assets, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"start.sh", "manifest.txt", "manifest.sig"} {
+		path := filepath.Join(assets, name)
+		if err = os.WriteFile(path, []byte("public test fixture"), 0644); err != nil {
+			t.Fatal(err)
+		}
+		if err = os.Chmod(path, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
 	reservation, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -70,6 +86,7 @@ func TestProductionTLSProcess(t *testing.T) {
 	defer cancel()
 	setup := exec.CommandContext(ctx, binary, "setup", "--non-interactive", "--config", configuration, "--state-dir", state, "--tls", "files", "--public-url", "https://chat.example", "--admin-url", "https://admin.example", "--listen", "127.0.0.1:0", "--admin-listen", adminAddress, "--cert", certPath, "--key", keyPath, "--admin-cert", certPath, "--admin-key", keyPath, "--credentials-fd", "3")
 	setup.ExtraFiles = []*os.File{file}
+	setup.Args = append(setup.Args, "--distribution-dir", assets)
 	if output, err := setup.CombinedOutput(); err != nil {
 		t.Fatalf("production setup failed: %v: %s", err, output)
 	}
@@ -151,6 +168,9 @@ func TestProductionTLSProcess(t *testing.T) {
 	if request("chat.example", public, "/admin/") != 404 {
 		t.Fatal("dashboard exposed publicly")
 	}
+	if request("chat.example", public, "/start.sh") != 200 || request("chat.example", public, "/client-dist/manifest.txt") != 200 || request("chat.example", public, "/client-dist/state.db") != 404 {
+		t.Fatal("public release route isolation failed")
+	}
 	if request("admin.example", private, "/admin/") != 200 {
 		t.Fatal("private dashboard unavailable")
 	}
@@ -159,6 +179,9 @@ func TestProductionTLSProcess(t *testing.T) {
 	}
 	if request("admin.example", private, "/v1/info") != 404 {
 		t.Fatal("private listener exposes public API")
+	}
+	if request("admin.example", private, "/client-dist/start.sh") != 404 {
+		t.Fatal("private listener exposes release downloads")
 	}
 	doctor := exec.CommandContext(ctx, binary, "doctor", "--config", configuration)
 	if output, err := doctor.CombinedOutput(); err != nil {

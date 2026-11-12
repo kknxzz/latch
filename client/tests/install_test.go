@@ -12,8 +12,9 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net/http"
 	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -46,8 +47,6 @@ func TestVerifiedInstallerEnrollsActualClient(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	state := filepath.Join(base, "state")
-	gateway := startServer(t, ctx, serverBinary, state, "127.0.0.1:0")
-	url := "http://" + serverAddress(t, gateway)
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		t.Fatal(err)
@@ -77,25 +76,35 @@ func TestVerifiedInstallerEnrollsActualClient(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	repository := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data []byte
-		switch r.URL.Path {
-		case "/manifest.txt":
-			data = manifest
-		case "/manifest.sig":
-			data = sig
-		case "/" + artifact:
-			data = payload
-		default:
-			http.NotFound(w, r)
-			return
+	assets := filepath.Join(base, "public")
+	if err = os.Mkdir(assets, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.Chmod(assets, 0755); err != nil {
+		t.Fatal(err)
+	}
+	for name, data := range map[string][]byte{"manifest.txt": manifest, "manifest.sig": sig, "start.sh": script, artifact: payload} {
+		path := filepath.Join(assets, name)
+		if err = os.WriteFile(path, data, 0644); err != nil {
+			t.Fatal(err)
 		}
-		w.Header().Set("Content-Length", fmt.Sprint(len(data)))
-		_, _ = w.Write(data)
-	}))
+		if err = os.Chmod(path, 0644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gateway := startServer(t, ctx, serverBinary, state, "127.0.0.1:0", "--distribution-dir", assets)
+	gatewayURL := "http://" + serverAddress(t, gateway)
+	upstream, err := url.Parse(gatewayURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// TLS terminates at this trusted local proxy; release bytes come from the
+	// actual compiled Latch server's restricted distribution routes.
+	repository := httptest.NewUnstartedServer(httputil.NewSingleHostReverseProxy(upstream))
 	repository.TLS = &tls.Config{MinVersion: tls.VersionTLS13}
 	repository.StartTLS()
 	defer repository.Close()
+	repositoryURL := repository.URL + "/client-dist"
 	ca := filepath.Join(base, "ca.pem")
 	if err = os.WriteFile(ca, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: repository.Certificate().Raw}), 0600); err != nil {
 		t.Fatal(err)
@@ -117,7 +126,7 @@ func TestVerifiedInstallerEnrollsActualClient(t *testing.T) {
 	defer credential.Close()
 	dir := filepath.Join(base, "profile")
 	bin := filepath.Join(base, "bin")
-	installer := exec.CommandContext(ctx, "sh", "../scripts/install.sh", "--repository", repository.URL, "--publisher-key", keyPath, "--bin-dir", bin, "--server", url, "--dev", "--non-interactive", "--enrollment-fd", "3", "--identity-backend", "file", "--config-dir", dir, "--nick", "Noah")
+	installer := exec.CommandContext(ctx, "sh", "../scripts/install.sh", "--repository", repositoryURL, "--publisher-key", keyPath, "--bin-dir", bin, "--server", gatewayURL, "--dev", "--non-interactive", "--enrollment-fd", "3", "--identity-backend", "file", "--config-dir", dir, "--nick", "Noah")
 	installer.ExtraFiles = []*os.File{credential}
 	installer.Env = append(os.Environ(), "CURL_CA_BUNDLE="+ca)
 	output, err := installer.CombinedOutput()
@@ -128,7 +137,7 @@ func TestVerifiedInstallerEnrollsActualClient(t *testing.T) {
 		t.Fatal("installer exposed enrollment credential")
 	}
 	c, err := config.Load(dir)
-	if err != nil || !c.Enrolled || c.Nickname != "Noah" || c.UpdateURL != repository.URL+"/updates" {
+	if err != nil || !c.Enrolled || c.Nickname != "Noah" || c.UpdateURL != repositoryURL+"/updates" {
 		t.Fatal("installer did not save enrolled identity, nickname and update repository", err)
 	}
 	id, err := identity.Load(identity.FileBackend{Dir: dir}, "")

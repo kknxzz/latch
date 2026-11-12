@@ -15,12 +15,14 @@ import (
 	"latch.local/server/internal/admin"
 	"latch.local/server/internal/auth"
 	"latch.local/server/internal/config"
+	"latch.local/server/internal/distribution"
 )
 
 func runSetup(args []string) error {
 	flags := flag.NewFlagSet("setup", flag.ContinueOnError)
 	path := flags.String("config", "/etc/latch/server.json", "New protected configuration file")
 	state := flags.String("state-dir", "/var/lib/latch", "Private state directory")
+	distributionDir := flags.String("distribution-dir", "", "Optional separate public release directory")
 	publicURL := flags.String("public-url", "", "Public HTTPS origin")
 	adminURL := flags.String("admin-url", "", "Separate private dashboard HTTPS origin")
 	mode := flags.String("tls", "acme", "acme, files or proxy")
@@ -107,7 +109,7 @@ func runSetup(args []string) error {
 		}
 		*terms = true
 	}
-	c := config.Config{StateDir: *state, PublicURL: *publicURL, AdminURL: *adminURL, TLSMode: *mode, PublicListen: *listen, AdminListen: *private, MaxConnections: 100, MaxRooms: 20, MaxMembers: 16}
+	c := config.Config{StateDir: *state, DistributionDir: *distributionDir, PublicURL: *publicURL, AdminURL: *adminURL, TLSMode: *mode, PublicListen: *listen, AdminListen: *private, MaxConnections: 100, MaxRooms: 20, MaxMembers: 16}
 	if *proxies != "" {
 		for _, prefix := range strings.Split(*proxies, ",") {
 			c.TrustedProxies = append(c.TrustedProxies, strings.TrimSpace(prefix))
@@ -153,6 +155,13 @@ func runSetup(args []string) error {
 	}
 	if err := config.PrivateDir(c.StateDir); err != nil {
 		return err
+	}
+	if c.DistributionDir != "" {
+		assets, err := distribution.New(c.DistributionDir, c.StateDir)
+		if err != nil {
+			return err
+		}
+		assets.Close()
 	}
 	if _, err := config.PrepareTLS(c); err != nil {
 		return err
@@ -208,6 +217,13 @@ func runDoctor(args []string) error {
 	}
 	if _, err = config.PrepareTLS(c); err != nil {
 		return err
+	}
+	if c.DistributionDir != "" {
+		assets, err := distribution.New(c.DistributionDir, c.StateDir)
+		if err != nil {
+			return err
+		}
+		assets.Close()
 	}
 	info, localErr := admin.CallLocal(context.Background(), c.StateDir, "server.info")
 	if localErr == nil {

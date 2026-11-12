@@ -22,6 +22,7 @@ type Config struct {
 	AdminCertFile   string   `json:"admin_cert_file,omitempty"`
 	AdminKeyFile    string   `json:"admin_key_file,omitempty"`
 	StateDir        string   `json:"state_dir"`
+	DistributionDir string   `json:"distribution_dir,omitempty"`
 	Development     bool     `json:"development"`
 	TLSMode         string   `json:"tls_mode"`
 	CertFile        string   `json:"cert_file,omitempty"`
@@ -54,6 +55,18 @@ func (c Config) ProxyPrefixes() ([]netip.Prefix, error) {
 func (c Config) Validate() error {
 	if c.StateDir == "" || !filepath.IsAbs(c.StateDir) {
 		return ErrInvalid
+	}
+	if c.DistributionDir != "" {
+		dir, state := filepath.Clean(c.DistributionDir), filepath.Clean(c.StateDir)
+		if !filepath.IsAbs(c.DistributionDir) || dir != c.DistributionDir {
+			return ErrInvalid
+		}
+		for _, pair := range [][2]string{{dir, state}, {state, dir}} {
+			rel, err := filepath.Rel(pair[0], pair[1])
+			if err != nil || (rel != ".." && !strings.HasPrefix(rel, ".."+string(os.PathSeparator))) {
+				return ErrInvalid
+			}
+		}
 	}
 	if c.MaxConnections < 1 || c.MaxConnections > 10000 || c.MaxRooms < 1 || c.MaxRooms > 1000 || c.MaxMembers < 2 || c.MaxMembers > 16 {
 		return ErrInvalid

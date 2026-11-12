@@ -21,6 +21,7 @@ import (
 	"latch.local/server/internal/admin"
 	"latch.local/server/internal/auth"
 	"latch.local/server/internal/config"
+	"latch.local/server/internal/distribution"
 	"latch.local/server/internal/gateway"
 )
 
@@ -88,6 +89,7 @@ func run(args []string) error {
 	stateDir := flags.String("state-dir", "", "Development state directory")
 	listen := flags.String("listen", "127.0.0.1:8080", "Development listen address")
 	adminListen := flags.String("admin-listen", "", "Development administrative listen address")
+	distributionDir := flags.String("distribution-dir", "", "Development public release directory")
 	enrollmentFile := flags.String("enrollment-file", "", "Development-only code output file; must not exist")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
@@ -106,12 +108,13 @@ func run(args []string) error {
 			return e
 		}
 		c = config.Development(dir)
+		c.DistributionDir = *distributionDir
 		c.PublicListen = *listen
 		if *adminListen != "" {
 			c.AdminListen = *adminListen
 		}
 	} else {
-		if *configPath == "" || *stateDir != "" || *enrollmentFile != "" || *adminListen != "" {
+		if *configPath == "" || *stateDir != "" || *enrollmentFile != "" || *adminListen != "" || *distributionDir != "" {
 			return errors.New("production requires --config")
 		}
 		c, err = config.Load(*configPath)
@@ -176,8 +179,17 @@ func run(args []string) error {
 		return err
 	}
 	defer g.Close()
+	var publicHandler http.Handler = g
+	if c.DistributionDir != "" {
+		assets, err := distribution.New(c.DistributionDir, c.StateDir)
+		if err != nil {
+			return err
+		}
+		defer assets.Close()
+		publicHandler = assets.Wrap(g)
+	}
 	// Administration is intentionally not attached to the public listener.
-	server := &http.Server{Addr: c.PublicListen, Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: material.Public, ErrorLog: log.New(httpDiagnostics(func() {
+	server := &http.Server{Addr: c.PublicListen, Handler: publicHandler, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: material.Public, ErrorLog: log.New(httpDiagnostics(func() {
 		if dashboard != nil {
 			dashboard.Record("gateway_http_error", "")
 		}

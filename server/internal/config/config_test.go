@@ -19,6 +19,20 @@ func TestDevelopmentCannotExposeCleartext(t *testing.T) {
 		t.Fatal("wildcard development listener allowed")
 	}
 }
+func TestDistributionCannotOverlapPrivateState(t *testing.T) {
+	base := t.TempDir()
+	c := Development(filepath.Join(base, "private"))
+	for _, dir := range []string{"relative", base, c.StateDir, filepath.Join(c.StateDir, "releases"), "/"} {
+		c.DistributionDir = dir
+		if c.Validate() == nil {
+			t.Fatal("unsafe release directory accepted", dir)
+		}
+	}
+	c.DistributionDir = filepath.Join(base, "public")
+	if err := c.Validate(); err != nil {
+		t.Fatal("separate public release directory rejected", err)
+	}
+}
 func TestProductionRequiresTLSAndPrivateAdministration(t *testing.T) {
 	c := Development(filepath.Join(t.TempDir(), "state"))
 	c.Development = false
