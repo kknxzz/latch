@@ -28,6 +28,15 @@ Development verification on 2026-11-12. This is not a release qualification repo
 - Dashboard password/TOTP, persistent counter replay and concurrent proof tests,
   cookie flags, CSRF/origin validation, lockout, session expiry, local recovery,
   bounded events, private routes and a live WebSocket host ban.
+- Guided setup/doctor both offline and live, atomic configuration publication,
+  real setup PTY interaction (including hidden UTF-8 password editing and Ctrl+C
+  terminal restoration), and systemd readiness datagrams.
+- TLS 1.3 handshakes and TLS 1.2 rejection, hostname isolation, certificate
+  mismatch/expiry and unsafe private-key rejection, bounded ACME host policy and
+  HTTP challenge route isolation. A real production-mode gateway process uses
+  trusted synthetic certificates on separate public/private listeners; its
+  dashboard is absent from the public listener and requires authentication on the
+  private listener. Live doctor and SIGTERM shutdown also pass.
 
 Go coverage includes independent protocol conformance fixtures, malformed input,
 enrollment concurrency/expiration/lockouts, signed authentication, UUID/key bans,
@@ -71,6 +80,10 @@ go test -run='^$' -fuzz=FuzzPacket -fuzztime=60s -parallel=4 ./internal/crypto
 and 30-minute pre-release campaigns remain required.
 
 ## Remaining verification
+
+The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
+was available on this development host, so installation/rollback/uninstall and
+the service sandbox have not been executed. No public ACME request was made.
 
 Native parser fuzzing, long fuzz campaigns, performance measurements, production installation checks, the
 other platform matrix, release signature verification, independent reproducible

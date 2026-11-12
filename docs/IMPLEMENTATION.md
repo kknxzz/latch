@@ -13,7 +13,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
-| M9: installers and updates | Pending | Fresh VM; idempotency; doctor; signed install/update; mirrors |
+| M9: installers and updates | In progress | Setup/doctor, real TLS process and terminal cancellation tests pass; installer/unit written; fresh VM, ACME issuance, signed install/update and mirrors remain |
 | M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
 | M11: security/resource review | Pending | Findings review; leak/load tests; secret/vulnerability scanning |
 | M12: reproducible signed releases | Pending | All platform tests; two independent builds; signatures and provenance |
@@ -62,7 +62,8 @@ The central bounded room actor handles the initial network size, rather than
 spawning an actor for every room. Transport writes remain independently bounded.
 Measure contention before replacing this with a more complicated design.
 
-The guided installer, automatic TLS, updates, signing, CI release
-pipeline, Linux/macOS AMD64 qualification and production resource review remain
-unfinished. Never describe this state as production-ready. Current verification
+Guided setup, automatic TLS wiring, doctor and a systemd installer are implemented.
+Public certificate issuance and a fresh Linux installation have not been verified.
+Signed updates/bootstrap, CI release pipeline, platform qualification and the
+production resource review remain unfinished. Never describe this state as production-ready. Current verification
 commands and environment are recorded in `VERIFICATION.md`.

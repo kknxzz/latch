@@ -15,5 +15,5 @@ for module in server client; do
     go vet ./...
   )
 done
-# Additional real-process scenarios, fuzz campaigns and platform installation
-# gates remain tracked in docs/IMPLEMENTATION.md; this command does not claim them.
+# Fuzz campaigns, performance and platform installation gates remain tracked in
+# docs/IMPLEMENTATION.md; this command does not claim them.

@@ -47,13 +47,21 @@ requires its current code. Use the next code to sign in. Local recovery uses
 For automation, `--credentials-fd 3` reads a private regular file containing
 `password`, `totp_secret` and `confirmation`; never put these values in arguments.
 
-Production currently supports explicit certificate files or an explicitly trusted
+Production supports automatic ACME certificates, explicit certificate files or an explicitly trusted
 loopback reverse proxy. Administration uses a separate private listener with TLS
 and a hostname different from the public relay (cookies are not isolated by port).
 Use WireGuard or an SSH forward to access that listener. Never proxy `/admin/`
 through the public gateway. Development uses a separate loopback HTTP listener;
 `--admin-listen 127.0.0.1:0` selects an unused port for local tests.
 
-The final installer must provide guided setup, systemd installation, private
-TLS, idempotent upgrades, and `latch-server doctor`.
-See `../docs/IMPLEMENTATION.md` for the full acceptance criteria.
+`latch-server setup` guides configuration and administrator initialization;
+`latch-server doctor --config FILE` checks local settings both offline and while
+the daemon runs. Setup never overwrites an existing configuration. TLS material
+is checked before listeners are reported ready. Automatic TLS requires explicit
+certificate-authority terms acceptance and public HTTP-01 validation for both
+configured hostnames.
+
+The Linux installer, systemd unit, upgrade and uninstall commands are described
+in [the deployment guide](../docs/DEPLOYMENT.md). They are written but have not yet
+been executed in a fresh Linux VM. Signed download/bootstrap tooling and platform
+qualification remain incomplete. See [the acceptance ledger](../docs/IMPLEMENTATION.md).
