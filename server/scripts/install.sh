@@ -99,12 +99,15 @@ if [ -d "$state/acme" ]; then
   [ ! -L "$state/acme" ] || fail 'Unsafe ACME cache directory.'
   chown latch:latch "$state/acme"
 fi
-runuser -u latch -- "$binary" doctor --config "$configuration"
+# Downloads live in a root-only temporary directory. Stage the verified image
+# in the public binary directory before the unprivileged preflight; do not
+# weaken permissions on the download or credentials directory.
+temporary=$(mktemp /usr/local/bin/.latch-server.XXXXXX)
+install -m 0755 "$binary" "$temporary"
+runuser -u latch -- "$temporary" doctor --config "$configuration"
 
 if [ -f "$target" ]; then install -m 0700 "$target" "$backup"; fi
 if [ -f "$unit" ]; then install -m 0600 "$unit" "$unit_backup"; fi
-temporary=$(mktemp /usr/local/bin/.latch-server.XXXXXX)
-install -m 0755 "$binary" "$temporary"
 mv -f -- "$temporary" "$target"
 temporary=
 install -m 0644 "$script_dir/latch-server.service" "$unit"
@@ -114,6 +117,7 @@ if [ -f "$script_dir/../../docs/DEPLOYMENT.md" ]; then
 fi
 systemctl daemon-reload
 systemctl enable latch-server.service
+systemctl reset-failed latch-server.service >/dev/null 2>&1 || true
 if systemctl restart latch-server.service && systemctl is-active --quiet latch-server.service; then
   :
 else
@@ -121,6 +125,7 @@ else
     install -m 0755 "$backup" "$target"
     install -m 0644 "$unit_backup" "$unit"
     systemctl daemon-reload
+    systemctl reset-failed latch-server.service >/dev/null 2>&1 || true
     systemctl restart latch-server.service || true
     fail 'Upgrade failed; restored the previous binary. Inspect systemctl status latch-server.'
   fi
