@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"latch.local/server/internal/protocol"
 	"latch.local/server/internal/rooms"
@@ -17,6 +18,9 @@ type Config struct {
 	PublicListen   string   `json:"public_listen"`
 	PublicURL      string   `json:"public_url,omitempty"`
 	AdminListen    string   `json:"admin_listen"`
+	AdminURL       string   `json:"admin_url,omitempty"`
+	AdminCertFile  string   `json:"admin_cert_file,omitempty"`
+	AdminKeyFile   string   `json:"admin_key_file,omitempty"`
 	StateDir       string   `json:"state_dir"`
 	Development    bool     `json:"development"`
 	TLSMode        string   `json:"tls_mode"`
@@ -60,7 +64,8 @@ func (c Config) Validate() error {
 	if err != nil {
 		return err
 	}
-	if c.PublicListen == c.AdminListen || (!admin.IsLoopback() && !admin.IsPrivate()) {
+	sameEphemeral := c.Development && c.PublicListen == c.AdminListen && strings.HasSuffix(c.PublicListen, ":0")
+	if (c.PublicListen == c.AdminListen && !sameEphemeral) || (!admin.IsLoopback() && !admin.IsPrivate()) {
 		return ErrInvalid
 	}
 	if _, err = c.ProxyPrefixes(); err != nil {
@@ -76,13 +81,25 @@ func (c Config) Validate() error {
 	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 		return ErrInvalid
 	}
+	adminURL, err := url.Parse(c.AdminURL)
+	if err != nil || adminURL.Scheme != "https" || adminURL.Hostname() == "" || adminURL.User != nil || adminURL.RawQuery != "" || adminURL.Fragment != "" || (adminURL.Path != "" && adminURL.Path != "/") {
+		return ErrInvalid
+	}
+	// Cookies are not scoped by port. Keep browser administration on a different
+	// hostname from the public relay and any public reverse proxy.
+	if strings.EqualFold(strings.TrimSuffix(adminURL.Hostname(), "."), strings.TrimSuffix(u.Hostname(), ".")) {
+		return ErrInvalid
+	}
+	if c.AdminCertFile == "" || c.AdminKeyFile == "" || !filepath.IsAbs(c.AdminCertFile) || !filepath.IsAbs(c.AdminKeyFile) {
+		return ErrInvalid
+	}
 	switch c.TLSMode {
 	case "files":
 		if c.CertFile == "" || c.KeyFile == "" || !filepath.IsAbs(c.CertFile) || !filepath.IsAbs(c.KeyFile) {
 			return ErrInvalid
 		}
 	case "proxy":
-		if (!public.IsLoopback() && !public.IsPrivate()) || len(c.TrustedProxies) == 0 {
+		if !public.IsLoopback() || len(c.TrustedProxies) == 0 {
 			return ErrInvalid
 		}
 	default:

@@ -6,15 +6,15 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | Milestone | State | Required evidence |
 |---|---|---|
 | M1: protocol, threat model, crypto qualification | In progress | Strict parsers; MLS create/add/remove/update tests; all target builds |
-| M2: gateway and room lifecycle | In progress | Actor/gateway race tests and real server startup/shutdown pass; heartbeat/restart process scenarios remain |
-| M3: client identity/config/network | In progress | Identity/config/TLS/auth tests pass; onboarding/reconnection UI remains |
-| M4: integrated E2EE | Pending | Real clients; epoch barriers; tamper/replay and removal tests |
-| M5: terminal interface | Pending | PTY tests; sanitization; resize; terminal restoration |
-| M6: enrollment and security state | In progress | Atomic use, global limits, persistent 8-hour lockouts and key-ban tests pass; dashboard workflow remains |
-| M7: PINs and kicking | In progress | Server policy tests pass; complete client/rekey integration remains |
-| M8: private dashboard | Pending | Password/TOTP; CSRF/XSS; permanent revocation; private listener |
+| M2: gateway and room lifecycle | Implemented locally | Actor/gateway race tests and process lifecycle, host loss and restart pass; platform/load qualification remains |
+| M3: client identity/config/network | Implemented locally | Identity/config/TLS/auth, onboarding and lobby reconnection tests pass; native credential-store qualification remains |
+| M4: integrated E2EE | Implemented locally | Three actual clients exchange encrypted messages; post-removal rekey; native tamper/replay tests pass |
+| M5: terminal interface | Implemented locally | PTY input, sanitization, resize and terminal restoration tests pass; platform/manual qualification remains |
+| M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
+| M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
+| M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | Pending | Fresh VM; idempotency; doctor; signed install/update; mirrors |
-| M10: integration/fuzz/performance | In progress | Server process lifecycle test exists; full real-client scenarios and performance report remain |
+| M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
 | M11: security/resource review | Pending | Findings review; leak/load tests; secret/vulnerability scanning |
 | M12: reproducible signed releases | Pending | All platform tests; two independent builds; signatures and provenance |
 
@@ -52,17 +52,17 @@ must never become release trust roots.
 
 ## Current implementation boundaries
 
-There is a runnable server (`go run ./cmd/latch-server serve --dev ...`) and
-independently tested client libraries. There is no client executable yet. Native
-crypto tests demonstrate three-member MLS changes inside a process; they are not
-evidence of three actual Latch client processes communicating through the gateway.
+The runnable server and terminal client are exercised together as compiled
+processes. The process suite covers enrollment, three-member encrypted exchange,
+room PINs, kicks, new epochs, abrupt host loss, gateway restart and lobby recovery.
+The server database and operational output are checked for a message canary.
 Keychain integration compiles but no test has written to the developer's Keychain.
 
 The central bounded room actor handles the initial network size, rather than
 spawning an actor for every room. Transport writes remain independently bounded.
 Measure contention before replacing this with a more complicated design.
 
-The dashboard, TUI, guided installer, automatic TLS, updates, signing, CI release
+The guided installer, automatic TLS, updates, signing, CI release
 pipeline, Linux/macOS AMD64 qualification and production resource review remain
 unfinished. Never describe this state as production-ready. Current verification
 commands and environment are recorded in `VERIFICATION.md`.

@@ -29,10 +29,31 @@ explicit administrative command displays the code to its caller; the daemon does
 not log it. The socket never listens on TCP. Use a short state-directory path
 (at most 89 bytes) to fit Unix socket limits on all supported platforms.
 
-Production configuration currently supports explicit certificate files or a
-private backend behind an explicitly trusted reverse proxy. The private dashboard
-and automatic TLS wizard are not implemented yet.
+The embedded private dashboard provides code generation, device nicknames/UUIDs/
+IDs, permanent public-key removal, gateway counts and bounded in-memory security
+events. Removal disconnects the device and destroys any room it hosts. No message
+contents or room keys are available to administration.
+
+Initialize administration locally before production startup:
+
+```sh
+latch-server admin init --state-dir /var/lib/latch
+```
+
+Run this as the service account. Setup reads the password from the controlling
+terminal with echo disabled, displays a fresh authenticator enrollment key, and
+requires its current code. Use the next code to sign in. Local recovery uses
+`admin reset` with the same arguments; existing sessions immediately lose access.
+For automation, `--credentials-fd 3` reads a private regular file containing
+`password`, `totp_secret` and `confirmation`; never put these values in arguments.
+
+Production currently supports explicit certificate files or an explicitly trusted
+loopback reverse proxy. Administration uses a separate private listener with TLS
+and a hostname different from the public relay (cookies are not isolated by port).
+Use WireGuard or an SSH forward to access that listener. Never proxy `/admin/`
+through the public gateway. Development uses a separate loopback HTTP listener;
+`--admin-listen 127.0.0.1:0` selects an unused port for local tests.
 
 The final installer must provide guided setup, systemd installation, private
-dashboard authentication, TLS, idempotent upgrades, and `latch-server doctor`.
+TLS, idempotent upgrades, and `latch-server doctor`.
 See `../docs/IMPLEMENTATION.md` for the full acceptance criteria.

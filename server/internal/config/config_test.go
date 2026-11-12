@@ -24,6 +24,9 @@ func TestProductionRequiresTLSAndPrivateAdministration(t *testing.T) {
 	c.Development = false
 	c.PublicURL = "https://chat.example"
 	c.TLSMode = "proxy"
+	c.AdminURL = "https://admin.example:8081"
+	c.AdminCertFile = "/etc/latch/admin-cert.pem"
+	c.AdminKeyFile = "/etc/latch/admin-key.pem"
 	if c.Validate() == nil {
 		t.Fatal("proxy accepted without trust configuration")
 	}
@@ -31,6 +34,11 @@ func TestProductionRequiresTLSAndPrivateAdministration(t *testing.T) {
 	if err := c.Validate(); err != nil {
 		t.Fatal(err)
 	}
+	c.AdminURL = "https://chat.example:8081"
+	if c.Validate() == nil {
+		t.Fatal("public and administrative cookie hostnames overlap")
+	}
+	c.AdminURL = "https://admin.example:8081"
 	c.AdminListen = "203.0.113.1:8081"
 	if c.Validate() == nil {
 		t.Fatal("public administration allowed")

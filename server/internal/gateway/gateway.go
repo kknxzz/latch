@@ -24,6 +24,7 @@ type Options struct {
 	Limits         rooms.Limits
 	TrustedProxies []netip.Prefix
 	Now            func() time.Time
+	SecurityEvent  func(string, string)
 }
 type Gateway struct {
 	store       *auth.Store
@@ -102,7 +103,13 @@ func (g *Gateway) Close() error {
 	})
 	return nil
 }
-func (g *Gateway) Stats(ctx context.Context) (rooms.Stats, error) { return g.rooms.Stats(ctx) }
+func (g *Gateway) Stats(ctx context.Context) (rooms.Stats, error)  { return g.rooms.Stats(ctx) }
+func (g *Gateway) Connected(ctx context.Context) ([]string, error) { return g.rooms.Connected(ctx) }
+func (g *Gateway) event(kind, deviceID string) {
+	if g.options.SecurityEvent != nil {
+		g.options.SecurityEvent(kind, deviceID)
+	}
+}
 func (g *Gateway) Ban(ctx context.Context, uuid string) error {
 	g.deviceMu.Lock()
 	defer g.deviceMu.Unlock()
@@ -169,6 +176,7 @@ func (g *Gateway) enroll(w http.ResponseWriter, r *http.Request) {
 	}
 	device, err := g.auth.Enroll(source, request)
 	if err != nil {
+		g.event("enrollment_failed", "")
 		if errors.Is(err, auth.ErrLimited) {
 			fail(w, 429, "RATE_LIMITED", "Rate limited.")
 		} else {
@@ -176,6 +184,7 @@ func (g *Gateway) enroll(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	g.event("device_enrolled", device.DeviceID)
 	writeJSON(w, 201, map[string]string{"uuid": device.UUID, "fingerprint": device.Fingerprint, "device_id": device.DeviceID})
 }
 
@@ -270,6 +279,7 @@ func (g *Gateway) connect(w http.ResponseWriter, r *http.Request) {
 	}
 	device, err := g.auth.VerifyConnection(challenge, proof)
 	if err != nil {
+		g.event("authentication_failed", "")
 		_ = write(conn, ctx, "error", e.RequestID, protocol.Error{Code: "AUTH_FAILED", Message: "Authentication failed."})
 		return
 	}
@@ -287,6 +297,8 @@ func (g *Gateway) connect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer g.rooms.Detach(context.Background(), device.UUID)
+	g.event("device_connected", device.DeviceID)
+	defer g.event("device_disconnected", device.DeviceID)
 	if err = g.store.SetNickname(device.UUID, proof.Nickname); err != nil {
 		return
 	}

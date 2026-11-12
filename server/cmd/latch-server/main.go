@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -23,6 +24,15 @@ import (
 
 var version = "0.1.0-dev"
 
+// net/http diagnostics can contain remote addresses and panic values. Retain
+// only a fixed event in the bounded, private event ring.
+type httpDiagnostics func()
+
+func (record httpDiagnostics) Write(p []byte) (int, error) {
+	record()
+	return len(p), nil
+}
+
 func main() {
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "Latch:", err)
@@ -30,6 +40,9 @@ func main() {
 	}
 }
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "admin" {
+		return runAdmin(args[1:])
+	}
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println("Latch Server", version)
 		return nil
@@ -63,6 +76,7 @@ func run(args []string) error {
 	dev := flags.Bool("dev", false, "Explicit localhost development mode")
 	stateDir := flags.String("state-dir", "", "Development state directory")
 	listen := flags.String("listen", "127.0.0.1:8080", "Development listen address")
+	adminListen := flags.String("admin-listen", "", "Development administrative listen address")
 	enrollmentFile := flags.String("enrollment-file", "", "Development-only code output file; must not exist")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
@@ -82,8 +96,11 @@ func run(args []string) error {
 		}
 		c = config.Development(dir)
 		c.PublicListen = *listen
+		if *adminListen != "" {
+			c.AdminListen = *adminListen
+		}
 	} else {
-		if *configPath == "" || *stateDir != "" || *enrollmentFile != "" {
+		if *configPath == "" || *stateDir != "" || *enrollmentFile != "" || *adminListen != "" {
 			return errors.New("production requires --config")
 		}
 		c, err = config.Load(*configPath)
@@ -99,6 +116,11 @@ func run(args []string) error {
 		return err
 	}
 	defer store.Close()
+	if !c.Development {
+		if _, err = store.AdminCredentials(); err != nil {
+			return errors.New("initialize administrator credentials locally before production startup")
+		}
+	}
 	local, err := admin.ListenLocal(store, c.StateDir)
 	if err != nil {
 		return err
@@ -129,20 +151,46 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	g, err := gateway.New(store, gateway.Options{Limits: c.Limits(), TrustedProxies: proxies})
+	var dashboard *admin.Handler
+	g, err := gateway.New(store, gateway.Options{Limits: c.Limits(), TrustedProxies: proxies, SecurityEvent: func(kind, deviceID string) {
+		if dashboard != nil {
+			dashboard.Record(kind, deviceID)
+		}
+	}})
 	if err != nil {
 		return err
 	}
 	defer g.Close()
 	// Administration is intentionally not attached to the public listener.
-	server := &http.Server{Addr: c.PublicListen, Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13}, ErrorLog: log.New(os.Stderr, "Latch HTTP: ", 0)}
+	server := &http.Server{Addr: c.PublicListen, Handler: g, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13}, ErrorLog: log.New(httpDiagnostics(func() {
+		if dashboard != nil {
+			dashboard.Record("gateway_http_error", "")
+		}
+	}), "", 0)}
 	listener, err := net.Listen("tcp", c.PublicListen)
 	if err != nil {
 		return errors.New("could not bind public listener")
 	}
+	defer listener.Close()
+	privateListener, err := net.Listen("tcp", c.AdminListen)
+	if err != nil {
+		return errors.New("could not bind private administrative listener")
+	}
+	defer privateListener.Close()
+	origin := strings.TrimSuffix(c.AdminURL, "/")
+	if c.Development {
+		origin = "http://" + privateListener.Addr().String()
+	}
+	dashboard, err = admin.NewHandler(store, g, admin.HandlerOptions{Origin: origin, Development: c.Development})
+	if err != nil {
+		return err
+	}
+	privateServer := &http.Server{Handler: dashboard, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second, MaxHeaderBytes: 16384, TLSConfig: &tls.Config{MinVersion: tls.VersionTLS13}, ErrorLog: log.New(httpDiagnostics(func() { dashboard.Record("admin_http_error", "") }), "", 0)}
+	defer privateServer.Close()
+	defer server.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
-	served := make(chan error, 1)
+	served := make(chan error, 2)
 	go func() {
 		if c.TLSMode == "files" {
 			served <- server.ServeTLS(listener, c.CertFile, c.KeyFile)
@@ -150,7 +198,15 @@ func run(args []string) error {
 			served <- server.Serve(listener)
 		}
 	}()
+	go func() {
+		if c.Development {
+			served <- privateServer.Serve(privateListener)
+		} else {
+			served <- privateServer.ServeTLS(privateListener, c.AdminCertFile, c.AdminKeyFile)
+		}
+	}()
 	fmt.Fprintln(os.Stderr, "Latch gateway listening on", listener.Addr())
+	fmt.Fprintln(os.Stderr, "Latch administration listening on", privateListener.Addr())
 	select {
 	case err = <-served:
 		if !errors.Is(err, http.ErrServerClosed) {
@@ -161,5 +217,6 @@ func run(args []string) error {
 	shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_ = server.Shutdown(shutdown)
+	_ = privateServer.Shutdown(shutdown)
 	return g.Close()
 }

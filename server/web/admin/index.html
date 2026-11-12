@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Latch Administration</title><link rel="stylesheet" href="/admin/assets/admin.css"><script src="/admin/assets/admin.js" defer></script></head>
+<body>
+<header><div class="brand">Latch <span>Administration</span></div><p>Private network control</p></header>
+<main>
+<p id="notice" role="status" aria-live="polite"></p>
+<section id="login-panel" class="panel login">
+  <h1>Administrator Access</h1><p>Enter your password and the current authenticator code.</p>
+  <form id="login-form" method="post" action="/admin/api/login">
+    <label for="password">Password</label><input id="password" name="password" type="password" autocomplete="current-password" required maxlength="256">
+    <label for="totp">Authenticator Code</label><input id="totp" name="totp" type="text" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required>
+    <button type="submit">Sign In</button>
+  </form>
+</section>
+<div id="dashboard" hidden>
+  <div class="toolbar"><h1>Network Overview</h1><div><button id="refresh" type="button">Refresh</button><button id="logout" type="button" class="quiet">Sign Out</button></div></div>
+  <section class="metrics" aria-label="Gateway status"><div><span>Gateway</span><strong id="health">—</strong></div><div><span>Connections</span><strong id="connections">—</strong></div><div><span>Rooms</span><strong id="rooms">—</strong></div><div><span>Uptime</span><strong id="uptime">—</strong></div></section>
+  <section class="panel enrollment"><div><h2>Device Enrollment</h2><p>Issue a temporary code for one new device. Issuing another code replaces the previous one.</p></div><button id="generate" type="button">Generate Code</button><div id="code-panel" hidden><output id="code" aria-label="Enrollment code"></output><p id="code-expiry"></p></div></section>
+  <section class="panel"><div class="section-title"><h2>Devices</h2><span id="device-count"></span></div><div class="table-wrap"><table><thead><tr><th>Nickname / Device ID</th><th>UUID</th><th>Status</th><th>Enrolled</th><th>Access</th></tr></thead><tbody id="devices"></tbody></table></div><p class="muted">Permanent removal blocks this public key, disconnects its device, and ends any room it hosts. A newly generated key still requires a fresh enrollment code.</p></section>
+  <section class="panel"><h2>Security Events</h2><ol id="events" class="events"></ol><p class="muted">Events remain in server memory only. Message contents and room PINs are never available here.</p></section>
+</div>
+<noscript>This private dashboard requires JavaScript. No external scripts are loaded.</noscript>
+</main><footer>Latch · Self-hosted communications</footer>
+</body></html>

@@ -32,7 +32,7 @@ func TestServerProcessLifecycle(t *testing.T) {
 	codeFile := filepath.Join(dir, "enrollment")
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, binary, "serve", "--dev", "--state-dir", state, "--listen", "127.0.0.1:0", "--enrollment-file", codeFile)
+	cmd := exec.CommandContext(ctx, binary, "serve", "--dev", "--state-dir", state, "--listen", "127.0.0.1:0", "--admin-listen", "127.0.0.1:0", "--enrollment-file", codeFile)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		t.Fatal(err)

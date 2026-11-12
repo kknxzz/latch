@@ -39,8 +39,9 @@ func DefaultLimits() Limits { return Limits{100, 20, 16} }
 
 type Stats struct{ Connections, Rooms int }
 type result struct {
-	stats Stats
-	err   error
+	stats     Stats
+	connected []string
+	err       error
 }
 type command struct {
 	kind, uuid string
@@ -112,23 +113,31 @@ func New(limits Limits, now func() time.Time) (*Manager, error) {
 	go m.run()
 	return m, nil
 }
-func (m *Manager) call(ctx context.Context, c command) (Stats, error) {
+func (m *Manager) submit(ctx context.Context, c command) (result, error) {
 	c.reply = make(chan result, 1)
 	select {
 	case m.commands <- c:
 	case <-m.done:
-		return Stats{}, ErrClosed
+		return result{}, ErrClosed
 	case <-ctx.Done():
-		return Stats{}, ctx.Err()
+		return result{}, ctx.Err()
 	}
 	select {
 	case r := <-c.reply:
-		return r.stats, r.err
+		return r, r.err
 	case <-m.done:
-		return Stats{}, ErrClosed
+		return result{}, ErrClosed
 	case <-ctx.Done():
-		return Stats{}, ctx.Err()
+		return result{}, ctx.Err()
 	}
+}
+func (m *Manager) call(ctx context.Context, c command) (Stats, error) {
+	r, err := m.submit(ctx, c)
+	return r.stats, err
+}
+func (m *Manager) Connected(ctx context.Context) ([]string, error) {
+	r, err := m.submit(ctx, command{kind: "connected"})
+	return r.connected, err
 }
 func (m *Manager) Attach(ctx context.Context, p Peer) error {
 	_, err := m.call(ctx, command{kind: "attach", peer: p})
@@ -200,7 +209,13 @@ func (m *Manager) run() {
 				}
 			}
 			var err error
+			var connected []string
 			switch c.kind {
+			case "connected":
+				for uuid := range a.peers {
+					connected = append(connected, uuid)
+				}
+				sort.Strings(connected)
 			case "attach":
 				err = a.attach(c.peer)
 			case "detach":
@@ -226,7 +241,7 @@ func (m *Manager) run() {
 				return
 			}
 			a.drainFailed()
-			c.reply <- result{stats: Stats{len(a.peers), len(a.rooms)}, err: err}
+			c.reply <- result{stats: Stats{len(a.peers), len(a.rooms)}, connected: connected, err: err}
 		}
 		a.drainFailed()
 	}

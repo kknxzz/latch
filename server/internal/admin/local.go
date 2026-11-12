@@ -17,20 +17,25 @@ import (
 )
 
 type Local struct {
-	listener *net.UnixListener
-	store    *auth.Store
-	slots    chan struct{}
-	done     chan struct{}
-	workers  sync.WaitGroup
-	once     sync.Once
+	listener       *net.UnixListener
+	store          *auth.Store
+	slots          chan struct{}
+	credentialSlot chan struct{}
+	done           chan struct{}
+	workers        sync.WaitGroup
+	once           sync.Once
 }
 type LocalRequest struct {
-	Operation string `json:"operation"`
+	Operation    string `json:"operation"`
+	Password     []byte `json:"password,omitempty"`
+	TOTPSecret   string `json:"totp_secret,omitempty"`
+	Confirmation string `json:"confirmation,omitempty"`
 }
 type LocalResponse struct {
 	Code      string    `json:"code,omitempty"`
 	ExpiresAt time.Time `json:"expires_at,omitempty"`
 	Error     string    `json:"error,omitempty"`
+	ServerID  string    `json:"server_id,omitempty"`
 }
 
 // ListenLocal requires the same private directory as the locked database. The
@@ -65,7 +70,7 @@ func ListenLocal(store *auth.Store, dir string) (*Local, error) {
 		listener.Close()
 		return nil, err
 	}
-	local := &Local{listener: listener, store: store, slots: make(chan struct{}, 4), done: make(chan struct{})}
+	local := &Local{listener: listener, store: store, slots: make(chan struct{}, 4), credentialSlot: make(chan struct{}, 1), done: make(chan struct{})}
 	go local.serve()
 	return local, nil
 }
@@ -91,6 +96,7 @@ func (l *Local) handle(conn *net.UnixConn) {
 	// A newline-delimited single request avoids waiting for EOF on a connection
 	// whose caller is waiting for the response. Bound the entire request to 1 KiB.
 	data := make([]byte, 0, 128)
+	defer func() { clear(data) }()
 	var one [1]byte
 	for len(data) <= 1024 {
 		n, err := conn.Read(one[:])
@@ -105,11 +111,29 @@ func (l *Local) handle(conn *net.UnixConn) {
 		}
 	}
 	var request LocalRequest
+	defer func() { clear(request.Password) }()
 	response := LocalResponse{}
 	if len(data) > 1024 || protocol.Strict(data, &request) != nil {
 		response.Error = "Invalid local request."
 	} else {
 		switch request.Operation {
+		case "server.info":
+			response.ServerID = l.store.ServerID()
+		case "admin.initialize", "admin.reset":
+			select {
+			case l.credentialSlot <- struct{}{}:
+				err := Initialize(l.store, request.Password, request.TOTPSecret, request.Confirmation, time.Now(), request.Operation == "admin.reset")
+				<-l.credentialSlot
+				if err != nil {
+					if errors.Is(err, auth.ErrAdminInitialized) {
+						response.Error = "Administrator already initialized."
+					} else {
+						response.Error = "Administrator initialization failed."
+					}
+				}
+			default:
+				response.Error = "Administrator initialization busy."
+			}
 		case "enrollment.generate":
 			code, expires, err := l.store.GenerateCode()
 			if err != nil {
@@ -131,6 +155,9 @@ func (l *Local) Close() error {
 }
 
 func CallLocal(ctx context.Context, dir, operation string) (LocalResponse, error) {
+	return RequestLocal(ctx, dir, LocalRequest{Operation: operation})
+}
+func RequestLocal(ctx context.Context, dir string, request LocalRequest) (LocalResponse, error) {
 	var response LocalResponse
 	info, err := os.Lstat(dir)
 	if err != nil || !info.IsDir() || info.Mode().Perm() != 0700 {
@@ -148,7 +175,7 @@ func CallLocal(ctx context.Context, dir, operation string) (LocalResponse, error
 	}
 	defer conn.Close()
 	_ = conn.SetDeadline(time.Now().Add(3 * time.Second))
-	if json.NewEncoder(conn).Encode(LocalRequest{Operation: operation}) != nil {
+	if json.NewEncoder(conn).Encode(request) != nil {
 		return response, errors.New("local administration request failed")
 	}
 	data, err := io.ReadAll(io.LimitReader(conn, 2049))

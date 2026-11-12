@@ -16,12 +16,18 @@ Development verification on 2026-11-12. This is not a release qualification repo
 `sh scripts/test-local.sh` passed, including:
 
 - Optimized native static-library build and removal of optional LLVM bitcode.
-- Seven Rust tests for MLS/ABI behavior.
+- Nine Rust tests for MLS/ABI behavior, including panic cleanup and credential types.
 - Rust format validation and Clippy with warnings treated as errors.
-- `go test -race ./...` in both independent modules.
+- `go test -race -count=1 ./...` in both independent modules.
 - `go vet ./...` in both independent modules.
 - A real compiled server process: private state initialization, enrollment-code
   file permissions, localhost readiness, HTTP info, and clean SIGTERM shutdown.
+- Three real terminal client processes and a real gateway: enrollment, room PIN,
+  encrypted exchange, third-member addition, kick/rejoin rejection, post-kick
+  epoch, host termination, restart, lobby recovery and terminal restoration.
+- Dashboard password/TOTP, persistent counter replay and concurrent proof tests,
+  cookie flags, CSRF/origin validation, lockout, session expiry, local recovery,
+  bounded events, private routes and a live WebSocket host ban.
 
 Go coverage includes independent protocol conformance fixtures, malformed input,
 enrollment concurrency/expiration/lockouts, signed authentication, UUID/key bans,
@@ -31,7 +37,14 @@ protected-file permissions.
 
 The Go/Rust boundary test exercises an actual three-member MLS group, a membership
 removal, sender authentication, duplicate rejection, and a subsequent key update.
-It does not substitute for the required real-process end-to-end client suite.
+The separate process suite covers actual clients through the relay. Neither test
+establishes security against arbitrary compromised endpoints or active malicious
+implementations.
+
+The embedded dashboard was also reviewed in Safari using disposable loopback
+state: sign-in, populated device table, literal HTML-injection nickname rendering,
+and sign-out. This was a development-mode visual check, not production TLS or
+mobile-browser qualification. No developer Keychain or production server was used.
 
 ## Initial fuzz campaigns
 
@@ -59,7 +72,6 @@ and 30-minute pre-release campaigns remain required.
 
 ## Remaining verification
 
-Full client/server process interaction, PTY tests, native parser fuzzing, long
-fuzz campaigns, performance measurements, production installation checks, the
+Native parser fuzzing, long fuzz campaigns, performance measurements, production installation checks, the
 other platform matrix, release signature verification, independent reproducible
 builds, and an integration security review have not yet been completed.
