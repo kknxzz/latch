@@ -79,6 +79,39 @@ go test -run='^$' -fuzz=FuzzPacket -fuzztime=60s -parallel=4 ./internal/crypto
 `FuzzPacket` covers Go buffer framing, not the Rust MLS parser. Native MLS fuzzing
 and 30-minute pre-release campaigns remain required.
 
+## Security scans
+
+Staticcheck 2026.2.2 (`v0.8.2`) passed in both modules after correcting its
+findings. `govulncheck v1.9.0` reported no Go vulnerabilities in either module.
+Gitleaks `v8.30.1` scanned 23 commits and the current tree with no unallowed
+findings; the public Cargo package-name false positive is documented in
+`DEPENDENCIES.md`. Actionlint `v1.7.12` accepted the CI workflow. These checks ran
+locally; the hosted platform matrix has not run.
+
+`cargo-audit 0.23.0` loaded 1490 RustSec advisories and failed with three
+vulnerabilities and one denied unmaintained warning. The precise graph and
+qualification candidate are recorded in `DEPENDENCIES.md`. This remains a release
+gate. A later complete security-script attempt passed secret scanning, Go module
+verification, Staticcheck and govulncheck before waiting on the native update's
+cache lock; that duplicate audit was deliberately stopped. It is not a passed
+Rust audit or passed complete script.
+
+## Initial protocol microbenchmark
+
+Apple M4, 10 logical CPUs, 24 GiB RAM; macOS/Go versions above. Command, from
+`server/`:
+
+```sh
+go test -run='^$' -bench=BenchmarkDecode -benchmem -count=3 ./internal/protocol
+```
+
+The existing decode fixture measured 2485, 2662 and 3056 ns/op; 2515–2516 B/op
+and 58 allocations/op. These are development samples while other builds were
+running, not isolated throughput/latency measurements. No optimization or
+end-to-end performance claim follows from them. Client/gateway RSS, idle CPU,
+per-connection memory, connection overhead, delivery latency, encryption/relay
+throughput, allocation profiles and release binary sizes remain to be measured.
+
 ## Remaining verification
 
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
