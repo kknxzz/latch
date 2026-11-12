@@ -67,6 +67,8 @@ type targetDescription struct {
 
 func TargetName() string { return "latch-" + runtime.GOOS + "-" + runtime.GOARCH }
 
+func NormalizeRepository(raw string) (string, error) { return repositoryURL(raw) }
+
 // Run verifies metadata before downloading an artifact, and verifies its length,
 // hashes and platform before atomically replacing the current executable.
 func Run(ctx context.Context, options Options) (result Result, err error) {

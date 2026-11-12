@@ -18,8 +18,9 @@ Development verification on 2026-11-12. This is not a release qualification repo
 - Optimized native static-library build and removal of optional LLVM bitcode.
 - Nine Rust tests for MLS/ABI behavior, including panic cleanup and credential types.
 - Rust format validation and Clippy with warnings treated as errors.
-- `go test -race -count=1 ./...` in both independent modules.
-- `go vet ./...` in both independent modules.
+- `go test -race -count=1 ./...` in both independent application modules and
+  the independent build-only release module.
+- `go vet ./...` in those three modules.
 - A real compiled server process: private state initialization, enrollment-code
   file permissions, localhost readiness, HTTP info, and clean SIGTERM shutdown.
 - Three real terminal client processes and a real gateway: enrollment, room PIN,
@@ -119,6 +120,40 @@ publisher version mismatch while preserving 0.1.1. The child trusts only the
 fixture's TLS certificate via its environment; no OS certificate store was changed.
 No real publisher key or public release repository was used.
 
+The replacement now also reports the embedded public-root fingerprint through
+`version --json`, and successfully verifies its repository using that embedded
+root without an explicit trust-file option.
+
+## Signed bootstrap and publisher verification
+
+The complete local test script passed after adding the release utility and
+bootstrap. A separate complete security-script run also passed across all three
+Go modules, including Staticcheck and both symbol/module Go vulnerability scans,
+redacted history/tree secret scanning, actionlint and the Rust audit.
+
+Publisher tests generate temporary keys, enforce a two-of-three root threshold,
+and verify detached signatures using the actual OpenSSL command. They build six
+synthetic platform executables, inspect the native fixture, publish checksum and
+TUF metadata, then download and verify a target through the official TUF verifier
+over a local TLS 1.3 server. They reject missing platforms, stale artifact hashes,
+wrong version, mismatched public/role keys, symlinks and private/public path aliases.
+Offline root private keys are removed before publication, proving they are not
+used by ordinary publishing. Sequence counters advance across publications and
+remain unchanged after input validation fails. These synthetic cross-platform
+fixtures do not establish that actual Latch builds work on those platforms.
+
+The shell bootstrap contract tests use real curl/OpenSSL. They verify signed
+installation and forwarding of enrollment-descriptor/update settings, refusal to
+overwrite an existing client, tampered binary rejection, unsigned manifest
+rejection and signed expired-manifest rejection.
+
+A separate integration test builds actual Latch and gateway executables. It
+downloads the signed client through local HTTPS, enrolls it using a real temporary
+code supplied only through descriptor 3, checks the saved nickname/identity/update
+repository, and reconnects using its saved key. Test TLS trust is scoped to child
+process environment variables; no system certificate store is changed. The
+server installer/systemd path has not run on a Linux host.
+
 The updater's transitive `golang.org/x/crypto` requirement was raised to 0.59.0
 after scanning detected 17 advisories in unused packages of the older module.
 The subsequent verbose Go scan reports no vulnerabilities, including modules.
@@ -146,5 +181,5 @@ was available on this development host, so installation/rollback/uninstall and
 the service sandbox have not been executed. No public ACME request was made.
 
 Native parser fuzzing, long fuzz campaigns, performance measurements, production installation checks, the
-other platform matrix, release signature verification, independent reproducible
+other platform matrix, genuine public release signature verification, independent reproducible
 builds, and an integration security review have not yet been completed.

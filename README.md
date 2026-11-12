@@ -15,6 +15,7 @@ are included in this repository.
 - `server/`: independent Go module, gateway and private administration.
 - `protocol/`: implementation-independent specification and conformance fixtures.
 - `scripts/`: local verification and build tooling.
+- `tools/release/`: independent build-only signing and native receipt utility.
 
 Applications do not import each other's source code. No particular hosting
 provider, production DNS name, reverse proxy, or remote service is required.
@@ -24,5 +25,9 @@ provider, production DNS name, reverse proxy, or remote service is required.
 Read [the threat model](docs/THREAT_MODEL.md) and [security policy](SECURITY.md).
 Security assumes public source code. Private cryptographic keys and protected
 configuration are the security boundary, not implementation secrecy.
+
+Signed installation, publisher setup and terminal update instructions are in
+[release verification](docs/RELEASES.md). Genuine release artifacts and production
+qualification remain outstanding.
 
 Licensed under the [MIT License](LICENSE).

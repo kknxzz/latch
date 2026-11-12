@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -52,6 +54,9 @@ func run(args []string) error {
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println("Latch Server", version)
 		return nil
+	}
+	if len(args) == 2 && args[0] == "version" && args[1] == "--json" {
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"version": version, "os": runtime.GOOS, "arch": runtime.GOARCH, "protocol": 1, "root_sha256": ""})
 	}
 	if len(args) > 0 && args[0] == "enrollment-code" {
 		flags := flag.NewFlagSet("enrollment-code", flag.ContinueOnError)

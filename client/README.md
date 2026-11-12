@@ -1,7 +1,8 @@
 # Latch client
 
 The native client and encrypted room workflow are implemented and tested locally.
-Production releases, installation, and verified updates are still in progress.
+Signed installation and terminal updates pass local integration tests. Genuine
+production releases and platform qualification are still in progress.
 
 ## Build and test
 
@@ -19,6 +20,11 @@ The build script removes embedded compiler bitcode from the Rust static archive
 before Go validates cgo linker inputs. It does not disable Go's validation.
 No Rust shared library or runtime process is needed by the resulting executable.
 The client module never imports the server module.
+
+For signed binary installation, see [release verification](../docs/RELEASES.md).
+Download and verify the script as a file before running it. Enrollment is then
+handled by the authenticated binary, which prompts through the terminal even
+when its parent shell's standard input is unavailable.
 
 ## Local use
 

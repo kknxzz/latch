@@ -13,7 +13,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
-| M9: installers and updates | In progress | Setup/doctor/TLS/PTY and actual TUF self-update pass; installer/unit written; signed bootstrap, fresh VM, ACME issuance, publication and mirror qualification remain |
+| M9: installers and updates | In progress | Setup/doctor/TLS/PTY, actual TUF self-update and signed client install/enrollment pass; publisher and bootstrap contracts pass; fresh VM, ACME issuance, real publication and mirror qualification remain |
 | M10: integration/fuzz/performance | In progress | Real-client process scenarios pass; native fuzzing, longer campaigns and performance report remain |
 | M11: security/resource review | In progress | Go static/vulnerability, secret scans and updated Rust advisory scan pass locally; platform qualification, independent review and leak/load review remain |
 | M12: reproducible signed releases | Pending | All platform tests; two independent builds; signatures and provenance |
@@ -64,7 +64,12 @@ Measure contention before replacing this with a more complicated design.
 
 Guided setup, automatic TLS wiring, doctor and a systemd installer are implemented.
 Public certificate issuance and a fresh Linux installation have not been verified.
-The signed terminal updater is implemented and tested with real client executables.
-Signed initial bootstrap, CI release pipeline, platform qualification and the
-production resource review remain unfinished. Never describe this state as production-ready. Current verification
+The signed terminal updater and client bootstrap are implemented and tested with
+real client executables. The publisher checks all six native artifact receipts,
+signs bootstrap files/checksums and emits verified TUF metadata. Its tests use
+synthetic cross-platform executables, not qualified release builds. Server
+bootstrap downloads are implemented; the actual systemd installation is untested.
+Built-in release-file hosting, CI release pipeline, platform qualification,
+independent reproducibility and the production resource review remain unfinished.
+Never describe this state as production-ready. Current verification
 commands and environment are recorded in `VERIFICATION.md`.

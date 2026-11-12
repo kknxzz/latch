@@ -3,6 +3,8 @@
 package update
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"os"
 	"os/exec"
@@ -11,9 +13,13 @@ import (
 	"testing"
 )
 
-func buildClient(t *testing.T, path, version string) {
+func buildClient(t *testing.T, path, version string, root ...[]byte) {
 	t.Helper()
-	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags", "-X main.version="+version, "-o", path, "./cmd/latch")
+	flags := "-X main.version=" + version
+	if len(root) > 0 {
+		flags += " -X latch.local/client/internal/update.rootBase64=" + base64.StdEncoding.EncodeToString(root[0])
+	}
+	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-ldflags", flags, "-o", path, "./cmd/latch")
 	cmd.Dir = filepath.Join("..", "..")
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("client build failed: %v: %s", err, output)
@@ -29,7 +35,7 @@ func TestActualClientUpdatesItsExecutable(t *testing.T) {
 	installed := filepath.Join(base, "latch")
 	replacement := filepath.Join(base, "replacement")
 	buildClient(t, installed, "0.1.0")
-	buildClient(t, replacement, "0.1.1")
+	buildClient(t, replacement, "0.1.1", r.anchor)
 	var err error
 	r.payload, err = os.ReadFile(replacement)
 	if err != nil {
@@ -64,6 +70,13 @@ func TestActualClientUpdatesItsExecutable(t *testing.T) {
 	}
 	if output, err := run("version"); err != nil || strings.TrimSpace(output) != "Latch 0.1.1" {
 		t.Fatal("replacement version incorrect", err, output)
+	}
+	if output, err := run("version", "--json"); err != nil || !json.Valid([]byte(output)) || !strings.Contains(output, `"version":"0.1.1"`) || strings.Contains(output, `"root_sha256":""`) {
+		t.Fatal("release version evidence missing", err, output)
+	}
+	withoutRoot := arguments[:len(arguments)-2]
+	if output, err := run(append(withoutRoot, "--check")...); err != nil || !strings.Contains(output, "already installed") {
+		t.Fatal("installed client could not verify its embedded publisher root", err, output)
 	}
 	r.publish(t, 2, "0.1.2") // Same image, mismatched signed version: reject it.
 	if _, err = run(arguments...); err == nil {

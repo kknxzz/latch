@@ -78,7 +78,8 @@ image was installed but durability could not be confirmed.
 - Version probe: five seconds, 256 bytes of stdout, stderr discarded. It runs
   only after signature, hash, length, build-package and platform verification.
 
-Signed bootstrap distribution and genuine publisher key provisioning are separate
-release requirements. A working updater does not authenticate an initial shell
-script obtained from an untrusted source. See the release evidence ledger before
-claiming a supported release exists.
+Signed bootstrap uses the separate [initial distribution profile](BOOTSTRAP.md).
+Genuine publisher key provisioning and release publication remain separate gates.
+A working updater does not authenticate an initial shell script obtained from an
+untrusted source. See the release evidence ledger before claiming a supported
+release exists.

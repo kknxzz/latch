@@ -15,14 +15,17 @@ actionlint -shellcheck= .github/workflows/*.yml
 # Redaction is always enabled; no raw secret report is saved or uploaded.
 gitleaks git --config "$root/.gitleaks.toml" --redact=100 --no-banner --no-color --log-opts=--all "$root"
 gitleaks dir --config "$root/.gitleaks.toml" --redact=100 --no-banner --no-color "$root"
-for module in server client; do
+for module in server client tools/release; do
   (
     cd "$root/$module"
     go mod verify
     staticcheck ./...
     govulncheck ./...
-    case "$module" in server) entry=latch-server ;; client) entry=latch ;; esac
-    (cd "cmd/$entry" && govulncheck -scan=module)
+    case "$module" in
+      server) (cd cmd/latch-server && govulncheck -scan=module) ;;
+      client) (cd cmd/latch && govulncheck -scan=module) ;;
+      tools/release) govulncheck -scan=module ;;
+    esac
   )
 done
 cargo audit --file "$root/client/crypto-bridge/Cargo.lock" --db "$tools_dir/advisory-db" --deny warnings

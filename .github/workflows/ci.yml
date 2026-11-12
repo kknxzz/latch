@@ -38,6 +38,9 @@ jobs:
           cache: false
       - name: Install pinned Rust toolchain
         run: rustup toolchain install 1.99.1 --profile minimal --component rustfmt --component clippy --component llvm-tools
+      - name: Install TLS 1.3 bootstrap download tool on macOS
+        if: runner.os == 'macOS'
+        run: brew install curl
       - name: Run native, Go, race and process tests
         run: sh scripts/test-local.sh
       - name: Verify script syntax

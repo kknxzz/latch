@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
@@ -17,6 +20,7 @@ import (
 	"latch.local/client/internal/identity"
 	"latch.local/client/internal/network"
 	"latch.local/client/internal/tui"
+	"latch.local/client/internal/update"
 )
 
 var version = "0.1.0-dev"
@@ -29,9 +33,9 @@ func main() {
 }
 
 type options struct {
-	dir, server, endpoint, nick, backend string
-	dev, nickSet                         bool
-	enrollmentFD                         int
+	dir, server, endpoint, nick, backend, updateURL string
+	dev, nickSet                                    bool
+	enrollmentFD                                    int
 }
 
 func run(args []string) error {
@@ -41,6 +45,13 @@ func run(args []string) error {
 	if len(args) == 1 && args[0] == "version" {
 		fmt.Println("Latch", version)
 		return nil
+	}
+	if len(args) == 2 && args[0] == "version" && args[1] == "--json" {
+		rootHash := ""
+		if root, err := update.EmbeddedRoot(); err == nil {
+			rootHash = fmt.Sprintf("%x", sha256.Sum256(root))
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]any{"version": version, "os": runtime.GOOS, "arch": runtime.GOARCH, "protocol": 1, "root_sha256": rootHash})
 	}
 	enrollOnly := len(args) > 0 && args[0] == "enroll"
 	if enrollOnly {
@@ -54,6 +65,7 @@ func run(args []string) error {
 	flags.StringVar(&o.endpoint, "endpoint", "/c/", "WebSocket endpoint")
 	flags.StringVar(&o.nick, "nick", "", "Optional nickname")
 	flags.StringVar(&o.backend, "identity-backend", "", "Credential storage: keychain or file")
+	flags.StringVar(&o.updateURL, "update-url", "", "Explicit HTTPS software release repository")
 	flags.BoolVar(&o.dev, "dev", false, "Permit loopback-only cleartext development")
 	flags.IntVar(&o.enrollmentFD, "enrollment-fd", -1, "Read enrollment code from an inherited descriptor, >=3")
 	if err := flags.Parse(args); err != nil {
@@ -69,6 +81,13 @@ func run(args []string) error {
 	})
 	if o.enrollmentFD != -1 && o.enrollmentFD < 3 {
 		return errors.New("enrollment descriptor must be at least 3")
+	}
+	if o.updateURL != "" {
+		var err error
+		o.updateURL, err = update.NormalizeRepository(o.updateURL)
+		if err != nil {
+			return err
+		}
 	}
 	if o.dir == "" {
 		base, err := os.UserConfigDir()
@@ -122,7 +141,7 @@ func run(args []string) error {
 		return err
 	}
 	defer conn.Close()
-	if !c.Enrolled || o.nickSet {
+	if !c.Enrolled || o.nickSet || o.updateURL != "" {
 		c.Enrolled = true
 		if err = config.Save(o.dir, c); err != nil {
 			return err
@@ -199,6 +218,9 @@ func prepareIdentity(ctx context.Context, o options, tty *os.File) (config.Confi
 			}
 			c.Nickname = o.nick
 		}
+		if o.updateURL != "" {
+			c.UpdateURL = o.updateURL
+		}
 		return c, id, nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
@@ -239,7 +261,7 @@ func prepareIdentity(ctx context.Context, o options, tty *os.File) (config.Confi
 	if err != nil {
 		return c, identity.Identity{}, err
 	}
-	c = config.Config{ServerURL: base, Endpoint: endpoint, Nickname: nick, Development: o.dev, IdentityBackend: backendName}
+	c = config.Config{ServerURL: base, Endpoint: endpoint, Nickname: nick, Development: o.dev, IdentityBackend: backendName, UpdateURL: o.updateURL}
 	client := network.New(c)
 	defer client.Close()
 	info, err := client.Info(ctx)

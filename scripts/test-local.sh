@@ -8,7 +8,7 @@ sh "$root/scripts/build-crypto.sh"
   cargo fmt --check
   cargo clippy --locked --all-targets -- -D warnings
 )
-for module in server client; do
+for module in server client tools/release; do
   (
     cd "$root/$module"
     go test -race -count=1 ./...

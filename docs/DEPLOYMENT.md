@@ -1,9 +1,10 @@
 # Server deployment
 
-The setup implementation is under development. Signed release downloads and
-fresh Linux/systemd installation qualification are still release gates. The
-commands below currently require a locally built or independently verified
-Linux server binary; they do not establish release authenticity themselves.
+Setup and signed download tooling are implemented. Genuine release publication
+and fresh Linux/systemd installation qualification are still release gates. The
+local commands below require a locally built or independently verified Linux
+server binary; they do not establish release authenticity themselves. For the
+verified download command, see [release verification](RELEASES.md).
 
 ## A dedicated VM
 
@@ -164,5 +165,6 @@ there is no fixed test password or enrollment bypass. Explicit
 passwords, enrollment codes or TOTP secrets in process arguments or shell history.
 
 No genuine release trust root or signed public bootstrap is published yet.
-`latch update`, signed client bootstrap and reproducible release artifacts remain
+`latch update`, signed bootstrap and publisher contract tests pass locally;
+independent reproducible release builds and deployment qualification remain
 unfinished. See [the evidence ledger](IMPLEMENTATION.md) before deploying.
