@@ -79,6 +79,11 @@ func run(args []string) error {
 		return err
 	}
 	o.dir = dir
+	identityLock, err := config.LockIdentity(o.dir)
+	if err != nil {
+		return err
+	}
+	defer identityLock.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	// /dev/tty permits prompts when the installer itself was read from a pipe.

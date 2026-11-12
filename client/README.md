@@ -41,6 +41,12 @@ different configuration directory for each additional device. macOS uses Keychai
 by default. Linux uses a private `0600` identity file inside a `0700` directory.
 `--identity-backend file` explicitly selects protected-file storage on macOS too.
 
+An identity belongs to its configuration directory, independently of its nickname.
+The normal client reuses one saved UUID/key pair, and permits one active session
+for that identity. A separate `--config-dir` creates a separate cryptographic
+device requiring its own enrollment code. This supports local testing of several
+devices; it is not hardware fingerprinting or a claim of one identity per computer.
+
 Use `/create`, `/join ROOM`, `/kick DEVICE`, `/leave`, `/nick NAME`, `/clear`, and `/quit`.
 `/nick NAME` saves the nickname for future launches and updates the dashboard.
 An explicit `--nick` launch option overrides the saved nickname. `/clear` discards

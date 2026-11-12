@@ -228,8 +228,13 @@ func TestRealClientsEncryptedRoomLifecycle(t *testing.T) {
 	url := "http://" + address
 	hostDir, bobDir, charlieDir := filepath.Join(base, "host"), filepath.Join(base, "noah"), filepath.Join(base, "victor")
 	host := startClient(t, ctx, clientBinary, serverBinary, state, url, "Levin", hostDir)
+	duplicate := exec.CommandContext(ctx, clientBinary, "--config-dir", hostDir, "--server", url, "--dev", "--identity-backend", "file")
+	if output, err := duplicate.CombinedOutput(); err == nil || !strings.Contains(string(output), "another Latch session") {
+		t.Fatalf("duplicate local identity session was not rejected: %v: %s", err, output)
+	}
 	bob := startClient(t, ctx, clientBinary, serverBinary, state, url, "Noah", bobDir)
 	charlie := startClient(t, ctx, clientBinary, serverBinary, state, url, "Victor", charlieDir)
+	charlieIdentity := deviceUUID(t, charlieDir)
 	host.write(t, "/create --pin\r")
 	host.out.wait(t, "Room PIN:")
 	host.write(t, "123456\r")
@@ -267,6 +272,9 @@ func TestRealClientsEncryptedRoomLifecycle(t *testing.T) {
 	saved, err := config.Load(charlieDir)
 	if err != nil || saved.Nickname != "Ezra" {
 		t.Fatal("nickname was not saved to local configuration", err)
+	}
+	if deviceUUID(t, charlieDir) != charlieIdentity {
+		t.Fatal("nickname change rotated device identity")
 	}
 	readyOffset := len(charlie.out.text())
 	host.write(t, "/kick "+deviceUUID(t, bobDir)+"\r")

@@ -151,6 +151,38 @@ func TestNicknameChangeIsPersistedBeforeAcknowledgment(t *testing.T) {
 	}
 }
 
+func TestDuplicateIdentityConnectionKeepsOriginalHost(t *testing.T) {
+	g, store, server := fixture(t)
+	device, key := enroll(t, store, server)
+	original := connect(t, server, device, key)
+	send(t, original, "room.create", protocol.Create{GroupID: make([]byte, 16), KeyPackage: []byte{1}})
+	if event := read(t, original); event.Type != "room.created" {
+		t.Fatal("host room was not created")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	duplicate, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(server.URL, "http")+"/c/", &websocket.DialOptions{Subprotocols: []string{"latch.v1"}, HTTPClient: server.Client()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer duplicate.CloseNow()
+	challengeEvent := read(t, duplicate)
+	var challenge protocol.AuthChallenge
+	if challengeEvent.Type != "auth.challenge" || json.Unmarshal(challengeEvent.Body, &challenge) != nil {
+		t.Fatal("missing challenge")
+	}
+	proof := protocol.AuthProof{UUID: device.UUID, Nickname: "Different Nick"}
+	proof.Signature = ed25519.Sign(key, protocol.Transcript([]byte("Latch/auth/v1"), []byte(challenge.ServerID), []byte(challenge.ConnectionID), challenge.Nonce, []byte("latch.v1"), []byte(device.UUID)))
+	send(t, duplicate, "auth.prove", proof)
+	if event := read(t, duplicate); event.Type != "error" {
+		t.Fatal("duplicate identity authenticated")
+	}
+	stats, err := g.Stats(ctx)
+	if err != nil || stats.Connections != 1 || stats.Rooms != 1 {
+		t.Fatal("duplicate attempt displaced original host", stats, err)
+	}
+}
+
 func TestHTTPEnrollmentAuthenticationAndRoomLifecycle(t *testing.T) {
 	g, s, server := fixture(t)
 	host, key := enroll(t, s, server)
