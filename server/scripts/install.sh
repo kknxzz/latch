@@ -6,7 +6,7 @@ umask 077
 
 fail() { echo "Latch: $*" >&2; exit 1; }
 usage() {
-  echo 'Usage: install.sh install|upgrade --binary PATH [-- SETUP_ARGUMENTS]'
+  echo 'Usage: install.sh install|upgrade --binary PATH [--allow-downgrade] [-- SETUP_ARGUMENTS]'
   echo '       install.sh uninstall'
   echo 'Uninstall keeps /etc/latch and /var/lib/latch, including permanent bans.'
   exit 1
@@ -15,9 +15,11 @@ usage() {
 action=${1:-install}
 if [ "$#" -gt 0 ]; then shift; fi
 binary=
+allow_downgrade=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --binary) [ "$#" -ge 2 ] || usage; binary=$2; shift 2 ;;
+    --allow-downgrade) allow_downgrade=true; shift ;;
     --) shift; break ;;
     *) usage ;;
   esac
@@ -50,7 +52,7 @@ elif [ -e "$target" ]; then
 fi
 
 if [ "$action" = uninstall ]; then
-  [ "$#" -eq 0 ] && [ -z "$binary" ] || usage
+  [ "$#" -eq 0 ] && [ -z "$binary" ] && [ "$allow_downgrade" = false ] || usage
   [ ! -L "$target" ] && [ ! -L "$backup" ] && [ ! -L "$unit_backup" ] || fail 'Refusing symlinked installation paths.'
   if [ -f "$unit" ]; then systemctl disable --now latch-server.service; fi
   rm -f -- "$unit" "$target" "$backup" "$unit_backup" /usr/local/share/doc/latch/DEPLOYMENT.md
@@ -102,6 +104,14 @@ fi
 # Downloads live in a root-only temporary directory. Stage the verified image
 # in the public binary directory before the unprivileged preflight; do not
 # weaken permissions on the download or credentials directory.
+if [ -f "$target" ] && [ "$allow_downgrade" = false ]; then
+  installed=$("$target" version)
+  case "$installed" in
+    'Latch Server '*) installed=${installed#Latch Server } ;;
+    *) fail 'Cannot determine the installed server version.' ;;
+  esac
+  "$binary" version --check-upgrade "$installed" || fail 'Software downgrade rejected. A deliberate local rollback requires --allow-downgrade.'
+fi
 temporary=$(mktemp /usr/local/bin/.latch-server.XXXXXX)
 install -m 0755 "$binary" "$temporary"
 runuser -u latch -- "$temporary" doctor --config "$configuration"

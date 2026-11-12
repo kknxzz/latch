@@ -253,6 +253,12 @@ func TestSystemdInstallerLifecycle(t *testing.T) {
 	if strings.TrimSpace(string(command("/usr/local/bin/latch-server", "version"))) != "Latch Server 0.1.1" || info() != serverID {
 		t.Fatal("upgrade did not preserve identity and replace the executable")
 	}
+	if output, err := exec.CommandContext(ctx, "sh", script, "upgrade", "--binary", binary).CombinedOutput(); err == nil || !strings.Contains(string(output), "downgrade") {
+		t.Fatalf("an older release was not rejected: %v: %s", err, output)
+	}
+	if info() != serverID {
+		t.Fatal("rejected downgrade disturbed the running network")
+	}
 	bad := filepath.Join(t.TempDir(), "failing-server")
 	if err = os.WriteFile(bad, []byte("#!/bin/sh\ncase \"$1\" in\n version) echo 'Latch Server 0.1.2';;\n doctor) exit 0;;\n *) exit 42;;\nesac\n"), 0700); err != nil {
 		t.Fatal(err)

@@ -43,6 +43,9 @@ func main() {
 	}
 }
 func run(args []string) error {
+	if len(args) == 3 && args[0] == "version" && args[1] == "--check-upgrade" {
+		return checkUpgrade(version, args[2])
+	}
 	if len(args) > 0 && args[0] == "setup" {
 		return runSetup(args[1:])
 	}
