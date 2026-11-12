@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"golang.org/x/sys/unix"
 	"os"
 	"testing"
 	"time"
@@ -19,7 +20,11 @@ func TestNoninteractiveCredentialDoesNotNeedEOF(t *testing.T) {
 	if _, err = w.Write([]byte("001234\n")); err != nil {
 		t.Fatal(err)
 	}
-	code, err := enrollmentCode(context.Background(), int(r.Fd()), nil)
+	fd, err := unix.Dup(int(r.Fd()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	code, err := enrollmentCode(context.Background(), fd, nil)
 	if err != nil || code != "001234" {
 		t.Fatal("failed inherited descriptor enrollment", err)
 	}
