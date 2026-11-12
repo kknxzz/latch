@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -60,7 +59,7 @@ func (o *terminalOutput) wait(t *testing.T, want string) {
 
 func TestSetupTerminalSecretsAndCancellation(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "latch-server")
-	build := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-race", "-o", binary, ".")
+	build := exec.Command("go", "build", "-race", "-o", binary, ".")
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %v: %s", err, output)
 	}

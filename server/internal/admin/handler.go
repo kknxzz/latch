@@ -126,19 +126,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Referrer-Policy", "no-referrer")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
 	if canonicalHost(r.Host, h.origin.Scheme) != h.origin.Host || r.URL.RawQuery != "" {
-		http.Error(w, "Invalid administrative request.", 400)
+		http.Error(w, "Invalid administrative request.", http.StatusBadRequest)
 		return
 	}
 	if h.secure && r.TLS == nil {
-		http.Error(w, "HTTPS required.", 403)
+		http.Error(w, "HTTPS required.", http.StatusForbidden)
 		return
 	}
 	if origin := r.Header.Get("Origin"); origin != "" && origin != h.origin.String() {
-		http.Error(w, "Origin rejected.", 403)
+		http.Error(w, "Origin rejected.", http.StatusForbidden)
 		return
 	}
 	if r.Method != "GET" && r.Method != "HEAD" && r.Header.Get("Origin") != h.origin.String() {
-		http.Error(w, "Origin required.", 403)
+		http.Error(w, "Origin required.", http.StatusForbidden)
 		return
 	}
 	h.mux.ServeHTTP(w, r)

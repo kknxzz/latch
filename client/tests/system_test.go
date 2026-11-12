@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"runtime"
 	"strings"
 	"sync"
 	"syscall"
@@ -105,7 +104,7 @@ func (p *process) write(t *testing.T, text string) {
 func compile(t *testing.T, dir, target string) string {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), filepath.Base(target))
-	cmd := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-race", "-o", binary, target)
+	cmd := exec.Command("go", "build", "-race", "-o", binary, target)
 	cmd.Dir = dir
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build failed: %v\n%s", err, output)

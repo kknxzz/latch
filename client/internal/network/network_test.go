@@ -18,7 +18,9 @@ func TestRejectInvalidTLSAndRedirects(t *testing.T) {
 	if _, err := client.Info(context.Background()); err == nil {
 		t.Fatal("untrusted TLS certificate accepted")
 	}
-	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { http.Redirect(w, r, "http://127.0.0.1:1", 302) }))
+	redirect := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "http://127.0.0.1:1", http.StatusFound)
+	}))
 	defer redirect.Close()
 	client = New(config.Config{ServerURL: redirect.URL, Development: true})
 	defer client.Close()

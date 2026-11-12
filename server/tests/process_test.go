@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"syscall"
 	"testing"
@@ -24,7 +23,7 @@ func TestServerProcessLifecycle(t *testing.T) {
 func compileServer(t *testing.T) string {
 	t.Helper()
 	binary := filepath.Join(t.TempDir(), "latch-server")
-	build := exec.Command(filepath.Join(runtime.GOROOT(), "bin", "go"), "build", "-race", "-o", binary, "./cmd/latch-server")
+	build := exec.Command("go", "build", "-race", "-o", binary, "./cmd/latch-server")
 	build.Dir = ".."
 	if output, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("server build failed: %v\n%s", err, output)

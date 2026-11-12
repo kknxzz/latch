@@ -47,7 +47,7 @@ import (
 	"unsafe"
 )
 
-var ErrKeychain = errors.New("Keychain unavailable, locked, or permission denied")
+var ErrKeychain = errors.New("macOS Keychain unavailable, locked, or permission denied")
 
 type KeychainBackend struct{}
 

@@ -69,16 +69,16 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	select {
 	case <-g.ctx.Done():
-		http.Error(w, "Service unavailable.", 503)
+		http.Error(w, "Service unavailable.", http.StatusServiceUnavailable)
 		return
 	default:
 	}
 	if r.URL.RawQuery != "" {
-		http.Error(w, "Query parameters are not supported.", 400)
+		http.Error(w, "Query parameters are not supported.", http.StatusBadRequest)
 		return
 	}
 	if r.Header.Get("Origin") != "" {
-		http.Error(w, "Browser origins are not supported.", 403)
+		http.Error(w, "Browser origins are not supported.", http.StatusForbidden)
 		return
 	}
 	if r.URL.Path != "/c/" {
@@ -86,7 +86,7 @@ func (g *Gateway) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		case g.requests <- struct{}{}:
 			defer func() { <-g.requests }()
 		default:
-			http.Error(w, "Service busy.", 503)
+			http.Error(w, "Service busy.", http.StatusServiceUnavailable)
 			return
 		}
 	}
@@ -237,7 +237,7 @@ func (g *Gateway) connect(w http.ResponseWriter, r *http.Request) {
 	g.lifecycle.Lock()
 	if g.closed {
 		g.lifecycle.Unlock()
-		http.Error(w, "Service unavailable.", 503)
+		http.Error(w, "Service unavailable.", http.StatusServiceUnavailable)
 		return
 	}
 	g.connections.Add(1)
