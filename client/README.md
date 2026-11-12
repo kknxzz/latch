@@ -41,7 +41,11 @@ different configuration directory for each additional device. macOS uses Keychai
 by default. Linux uses a private `0600` identity file inside a `0700` directory.
 `--identity-backend file` explicitly selects protected-file storage on macOS too.
 
-Use `/create`, `/join ROOM`, `/kick DEVICE`, `/leave`, `/nick NAME`, and `/quit`.
+Use `/create`, `/join ROOM`, `/kick DEVICE`, `/leave`, `/nick NAME`, `/clear`, and `/quit`.
+`/nick NAME` saves the nickname for future launches and updates the dashboard.
+An explicit `--nick` launch option overrides the saved nickname. `/clear` discards
+the local display buffer and keeps the current room connected; it cannot erase
+copies held by other devices, terminal captures or the operating system.
 `/create --pin` and `/join ROOM --pin` request a six-digit room PIN invisibly.
 Do not put PINs after commands. The member list shows device IDs accepted by
 `/kick`; full UUIDs are accepted too. Tab shows members on narrow terminals.

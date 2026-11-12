@@ -33,8 +33,12 @@ type Snapshot struct {
 	Host, Ready, Secret                                          bool
 	Members                                                      []protocol.Member
 	Lines                                                        []Line
+	ClearID                                                      uint64
 }
-type pending struct{ kind, text string }
+type pending struct {
+	kind, text string
+	hidden     bool
+}
 type secretAction struct{ kind, room string }
 type Model struct {
 	identity                  identity.Identity
@@ -54,13 +58,14 @@ type Model struct {
 	secret                    *secretAction
 	lines                     []Line
 	lineBytes                 int
+	clearID                   uint64
 }
 
 func New(id identity.Identity, server, nickname string, sender Sender, save func(string) error) *Model {
 	return &Model{identity: id, server: server, nickname: nickname, send: sender, saveNickname: save, now: time.Now, state: "Lobby", pending: make(map[string]pending), retired: make(map[string]bool), kicked: make(map[string]bool)}
 }
 func (m *Model) Snapshot() Snapshot {
-	s := Snapshot{Server: m.server, DeviceID: m.identity.DeviceID(), Nickname: m.nickname, RoomID: m.room, HostUUID: m.host, Host: m.host == m.identity.UUID, Ready: m.state == "Ready", Status: m.state, Prompt: "> ", Members: append([]protocol.Member(nil), m.roster...), Lines: append([]Line(nil), m.lines...)}
+	s := Snapshot{Server: m.server, DeviceID: m.identity.DeviceID(), Nickname: m.nickname, RoomID: m.room, HostUUID: m.host, Host: m.host == m.identity.UUID, Ready: m.state == "Ready", Status: m.state, Prompt: "> ", Members: append([]protocol.Member(nil), m.roster...), Lines: append([]Line(nil), m.lines...), ClearID: m.clearID}
 	if m.secret != nil {
 		s.Secret = true
 		s.Prompt = "Room PIN: "
@@ -160,7 +165,24 @@ func (m *Model) Input(line string) error {
 	case "/quit", "/exit":
 		return ErrQuit
 	case "/help":
-		m.notice("/create [--pin]  /join ROOM [--pin]  /kick DEVICE  /leave  /nick NAME  /quit")
+		m.notice("/create [--pin]  /join ROOM [--pin]  /kick DEVICE  /leave  /nick NAME  /clear  /quit")
+	case "/clear":
+		if len(words) != 1 {
+			m.notice("Usage: /clear")
+			return nil
+		}
+		clear(m.lines)
+		m.lines = nil
+		m.lineBytes = 0
+		m.clearID++
+		// A delayed acknowledgment must not redisplay text cleared locally.
+		for id, p := range m.pending {
+			if p.kind == "message.send" {
+				p.text = ""
+				p.hidden = true
+				m.pending[id] = p
+			}
+		}
 	case "/create":
 		if m.state != "Lobby" {
 			m.notice("Leave the current room first.")
@@ -376,12 +398,16 @@ func (m *Model) Handle(e protocol.Envelope) error {
 		delete(m.pending, e.RequestID)
 		switch p.kind {
 		case "message.send":
-			m.append(Line{Time: m.now(), Nickname: m.displayName(), Text: p.text})
+			if !p.hidden {
+				m.append(Line{Time: m.now(), Nickname: m.displayName(), Text: p.text})
+			}
 		case "nickname.set":
 			m.nickname = p.text
 			if m.saveNickname != nil {
 				if err := m.saveNickname(p.text); err != nil {
 					m.notice("Nickname changed, but saving local settings failed.")
+				} else {
+					m.notice("Nickname saved.")
 				}
 			}
 		}
@@ -794,6 +820,8 @@ func errorText(code string) string {
 		return "Rate limited. Try again later."
 	case "RESOURCE_LIMIT":
 		return "Server resource limit reached."
+	case "SERVICE_UNAVAILABLE":
+		return "The server is temporarily unavailable. Try again."
 	case "FORBIDDEN":
 		return "The request is not permitted."
 	default:

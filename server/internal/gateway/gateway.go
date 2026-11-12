@@ -289,7 +289,7 @@ func (g *Gateway) connect(w http.ResponseWriter, r *http.Request) {
 	// Serialize against dashboard revocation after signature verification.
 	_, err = g.store.Device(device.UUID)
 	if err == nil {
-		err = g.rooms.Attach(ctx, rooms.Peer{Member: protocol.Member{UUID: device.UUID, PublicKey: device.PublicKey, Nickname: proof.Nickname}, Send: q.send, DropQueued: q.dropRoom, Disconnect: cancel})
+		err = g.rooms.Attach(ctx, rooms.Peer{Member: protocol.Member{UUID: device.UUID, PublicKey: device.PublicKey, Nickname: proof.Nickname}, Send: q.send, DropQueued: q.dropRoom, Disconnect: cancel, SaveNickname: func(nick string) error { return g.store.SetNickname(device.UUID, nick) }})
 	}
 	g.deviceMu.Unlock()
 	if err != nil {

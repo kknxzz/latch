@@ -18,6 +18,7 @@ import (
 
 	"github.com/creack/pty"
 	"golang.org/x/term"
+	"latch.local/client/internal/config"
 	"latch.local/client/internal/identity"
 )
 
@@ -176,7 +177,11 @@ result=$?
 printf '\nLATCH_TEST_CLIENT_EXIT:%s\n' "$result"
 IFS= read -r latch_test_finish
 exit "$result"`
-	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", fixture, "latch-terminal-fixture", clientBinary, "--config-dir", dir, "--server", url, "--dev", "--identity-backend", "file", "--nick", nick, "--enrollment-fd", "3")
+	args := []string{"-c", fixture, "latch-terminal-fixture", clientBinary, "--config-dir", dir, "--server", url, "--dev", "--identity-backend", "file", "--enrollment-fd", "3"}
+	if nick != "" {
+		args = append(args, "--nick", nick)
+	}
+	cmd := exec.CommandContext(ctx, "/bin/sh", args...)
 	cmd.Stdin = slave
 	cmd.Stdout = slave
 	cmd.Stderr = slave
@@ -256,6 +261,13 @@ func TestRealClientsEncryptedRoomLifecycle(t *testing.T) {
 	charlie.write(t, second+"\r")
 	host.out.wait(t, second)
 	bob.out.wait(t, second)
+	charlie.write(t, "/clear\r")
+	charlie.write(t, "/nick Ezra\r")
+	charlie.out.wait(t, "Nickname saved.")
+	saved, err := config.Load(charlieDir)
+	if err != nil || saved.Nickname != "Ezra" {
+		t.Fatal("nickname was not saved to local configuration", err)
+	}
 	readyOffset := len(charlie.out.text())
 	host.write(t, "/kick "+deviceUUID(t, bobDir)+"\r")
 	bob.out.wait(t, "You have been kicked by the host.")
@@ -312,6 +324,11 @@ func TestRealClientsEncryptedRoomLifecycle(t *testing.T) {
 	case <-time.After(5 * time.Second):
 		t.Fatal("client exit timed out")
 	}
+	// A fresh client process uses the saved nickname without a --nick override.
+	relaunched := startClient(t, ctx, clientBinary, serverBinary, state, url, "", charlieDir)
+	relaunched.out.wait(t, "Ezra")
+	relaunched.write(t, "/quit\r")
+	relaunched.out.wait(t, "LATCH_TEST_CLIENT_EXIT:0")
 }
 func waitReconnected(t *testing.T, p *process) {
 	t.Helper()

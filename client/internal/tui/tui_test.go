@@ -101,6 +101,16 @@ func TestLayoutWidthsAndSecretMasking(t *testing.T) {
 		}
 	}
 }
+func TestClearedDisplayDoesNotRestoreWelcome(t *testing.T) {
+	s := app.Snapshot{Server: "https://chat.example", Status: "Ready", RoomID: "K7P9X2M4QA", ClearID: 1, Prompt: "> "}
+	screen := Layout(s, Editor{}, 80, 24, 0, false)
+	if strings.Contains(strings.Join(screen.Rows, "\n"), "Welcome to Latch") {
+		t.Fatal("cleared viewport restored welcome")
+	}
+	if !strings.Contains(screen.Rows[0], s.RoomID) {
+		t.Fatal("clear removed room header")
+	}
+}
 func FuzzSanitize(f *testing.F) {
 	f.Add("hello\x1b[2J")
 	f.Fuzz(func(t *testing.T, s string) {

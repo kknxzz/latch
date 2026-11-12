@@ -137,6 +137,19 @@ func connect(t *testing.T, server *httptest.Server, d auth.Device, key ed25519.P
 	}
 	return conn
 }
+func TestNicknameChangeIsPersistedBeforeAcknowledgment(t *testing.T) {
+	_, store, server := fixture(t)
+	device, key := enroll(t, store, server)
+	conn := connect(t, server, device, key)
+	send(t, conn, "nickname.set", protocol.Nickname{Nickname: "Noah"})
+	if event := read(t, conn); event.Type != "ok" {
+		t.Fatal("nickname change was rejected", event.Type)
+	}
+	saved, err := store.Device(device.UUID)
+	if err != nil || saved.Nickname != "Noah" {
+		t.Fatal("acknowledged nickname was not durable", err)
+	}
+}
 
 func TestHTTPEnrollmentAuthenticationAndRoomLifecycle(t *testing.T) {
 	g, s, server := fixture(t)

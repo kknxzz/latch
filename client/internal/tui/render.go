@@ -104,7 +104,7 @@ func Layout(s app.Snapshot, e Editor, width, height, scroll int, membersFocus bo
 			reversed = append(reversed, wrapped[i])
 		}
 	}
-	if len(s.Lines) == 0 {
+	if len(s.Lines) == 0 && s.ClearID == 0 {
 		reversed = []string{"Use /help for commands.", "Welcome to Latch."}
 	}
 	var visible []string

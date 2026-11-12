@@ -204,6 +204,12 @@ func (t *Terminal) loop() {
 		case <-t.ctx.Done():
 			return
 		case s := <-t.updates:
+			if s.ClearID != snapshot.ClearID {
+				scroll = 0
+				clear(snapshot.Lines)
+				clear(previous)
+				previous = nil
+			}
 			if s.Secret != snapshot.Secret || s.Prompt != snapshot.Prompt {
 				editor.Clear()
 			}

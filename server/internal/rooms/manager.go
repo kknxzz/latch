@@ -32,6 +32,8 @@ type Peer struct {
 	DropQueued func(string)
 	// Disconnect must never block. The actor also detaches this peer itself.
 	Disconnect func()
+	// SaveNickname must persist metadata before the actor acknowledges a change.
+	SaveNickname func(string) error
 }
 type Limits struct{ Connections, Rooms, Members int }
 
@@ -624,6 +626,12 @@ func (a *actor) handle(uuid string, e protocol.Envelope) {
 		if protocol.Strict(e.Body, &body) != nil || !auth.ValidNickname(body.Nickname) {
 			bad()
 			return
+		}
+		if p.peer.SaveNickname != nil {
+			if err := p.peer.SaveNickname(body.Nickname); err != nil {
+				a.error(uuid, e.RequestID, "SERVICE_UNAVAILABLE", "Nickname could not be saved.")
+				return
+			}
 		}
 		p.peer.Member.Nickname = body.Nickname
 		a.ok(uuid, e.RequestID)

@@ -153,7 +153,7 @@ target renders `You have been kicked by the host.`. Never name the host.
 
 Error codes: `AUTH_FAILED`, `ENROLLMENT_FAILED`, `RATE_LIMITED`, `INVALID_ROOM`,
 `INVALID_PIN`, `FORBIDDEN`, `ROOM_FULL`, `REKEY_IN_PROGRESS`, `PROTOCOL_ERROR`,
-`RESOURCE_LIMIT`, `ALREADY_CONNECTED`. Error text is fixed, never derived from
+`RESOURCE_LIMIT`, `ALREADY_CONNECTED`, `SERVICE_UNAVAILABLE`. Error text is fixed, never derived from
 untrusted input. Structural violations close with WebSocket 1008; oversized
 messages close with 1009. Internal failures return generic errors.
 
