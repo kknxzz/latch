@@ -1,0 +1,14 @@
+title = "Latch secret scanning"
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated build outputs and private local development state are not source artifacts."
+paths = ['''(^|/)(target|bin|dist|\.tools|\.local)/''']
+
+[[allowlists]]
+description = "Public Cargo package names, not credentials: libcrux-secrets followed by libcrux-sha3."
+condition = "AND"
+paths = ['''(^|/)Cargo\.lock$''']
+regexTarget = "match"
+regexes = ['''libcrux-secrets",\s+"libcrux-sha3"''']
