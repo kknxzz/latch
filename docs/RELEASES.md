@@ -2,8 +2,9 @@
 
 Release tooling is implemented, but no genuine public signing authority or
 qualified release has been published. Both local Linux verification suites and
-systemd installation lifecycles pass. Remaining platform execution, target build
-comparisons and genuine signing/publication remain release gates. Do not distribute
+systemd installation lifecycles pass. Platform execution and isolated rebuild
+comparisons now pass locally for all six QA artifacts. Genuine publisher setup,
+private reporting and signed public distribution remain. Do not distribute
 test keys as project trust roots.
 
 ## Operator keys
@@ -75,8 +76,9 @@ commit, source time, Go/Rust/compiler versions and selected macOS SDK.
 Run the command again with a different output directory and compare each binary
 and receipt with `cmp`. Separate invocations export different source directories
 and compile from fresh caches. The compiler, SDK/libc, public root and source
-commit must match. A repeated build on one machine is useful evidence, but
-independent operator rebuilds and all target-platform tests remain required.
+commit must match. Local isolated rebuilds and executed tests now cover every
+target; a second operator's rebuild adds independent assurance without creating
+another mandatory v0.1.0 gate.
 
 On each matching native runner, inspect its own locally built executable:
 
@@ -114,8 +116,8 @@ platforms, compares each binary/receipt/environment record, and validates all si
 assembled artifacts against the source commit and trust root. The retained
 candidate includes installer sources and public inputs for offline publication.
 It never receives private signing keys or automatically publishes a release.
-Hosted execution remains a separate verification gate; authoring the workflow
-does not establish that a runner completed it.
+Hosted execution has not run. Equivalent local suites and isolated rebuilds are
+recorded in `VERIFICATION.md`; writing a workflow alone is not execution evidence.
 
 ```sh
 cd tools/release

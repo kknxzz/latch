@@ -235,24 +235,44 @@ a production signing root, and these binaries were not published. Removing the
 Mach-O UUID was tried and rejected because the current dynamic loader requires
 it; the final builder preserves the native linker's deterministic UUID.
 
-The actual native builder also completed two isolated Linux ARM64 builds from
+The actual native builder also completed two isolated builds of every target from
 `ca7b359d813b40cf07583e78c8407540fa79b074`, version `0.1.0`, using a separate
 temporary QA root. Each build exported the exact commit, used fresh compilation
 caches and reused only verified dependency sources with downloads disabled.
-Both client and server passed native JSON execution/receipt checks and compared
-byte-for-byte. Building under `umask 0002` still produced mode `0755` executables.
+All six artifacts passed JSON execution/receipt checks on their corresponding
+native/translated/emulated platforms and compared byte-for-byte. The Linux
+builds under `umask 0002` still produced mode `0755` executables.
 
 | Artifact | Bytes | SHA-256 |
 |---|---:|---|
+| macOS ARM64 client | 20,397,490 | `70653503bc7e0d0fc5c707c5204a400ddc5fddb1fe17b3c01b8ff43e3a105a74` |
+| macOS Intel client | 20,942,624 | `35c99b8743abb695858cef1a98ddd4d087387688c6a713e31ba76e98aa79f87d` |
+| Linux AMD64 client | 17,137,576 | `4b10208526df82041d677635820a8b7f1d3fdeea83ae04cab468fa0d03e116a6` |
 | Linux ARM64 client | 15,955,056 | `8e7852c64a60da9d5f622a8a4fc262976a6e8ee89183c3cb5c3278db83af88a3` |
+| Linux AMD64 server | 9,470,076 | `3484c2d941bbb816f415cc48ce533778023ac7957446101b06559d50b8a76667` |
 | Linux ARM64 server | 8,716,412 | `8d141a28959c220a59bf4166590f6ff962b09a10cb037b439b858f8759068c83` |
 
-Environment: Ubuntu 24.04.5 ARM64, Go 1.27.4, Rust 1.99.1, GCC
-13.3.0 (`Ubuntu 13.3.0-6ubuntu2~24.04.1`). The embedded public QA root SHA-256 is
+Environment: Go 1.27.4 and Rust 1.99.1 throughout; Ubuntu 24.04.5 with GCC
+13.3.0 (`Ubuntu 13.3.0-6ubuntu2~24.04.1`) on both Linux architectures; Apple clang
+21.0.0 and SDK 27.2 on Mac. The embedded public QA root SHA-256 is
 `582e3c28556cbb028d03994cddcc0c4726d375990c532060c51105b31830df97`.
 These are development verification artifacts, not published releases or a
-production authority. The client references GLIBC_2.39; the server uses cgo-free
-Go. This qualifies this build environment, not older Linux distributions.
+production authority. Both Linux clients reference GLIBC_2.39; the servers use
+cgo-free Go. This qualifies these build environments, not older distributions.
+The two Linux guests were shut down after public QA artifacts and receipts were
+copied out and their hashes rechecked.
+
+All six real binaries plus their receipts/environment records were collected in
+one protected directory. `latch-release verify` reported `Verified all six
+artifacts and native receipts.` with the common commit, version and QA root.
+This establishes assembly validation; genuine publisher keys and public release
+signatures have not been provisioned or published.
+
+After the platform work and approved Keychain probes, the complete local
+`scripts/security-checks.sh` passed again: workflow linting, redacted Git/tree
+secret scans, module verification, static analysis, Go vulnerability checks and
+both Rust lockfile audits (1509 loaded advisories). No supported production
+release has been issued from these QA inputs.
 
 ## Initial protocol microbenchmark
 

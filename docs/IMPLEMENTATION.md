@@ -5,18 +5,18 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 
 | Milestone | State | Required evidence |
 |---|---|---|
-| M1: protocol, threat model, crypto qualification | In progress | Strict parsers; MLS create/add/remove/update tests; all target builds |
-| M2: gateway and room lifecycle | Implemented locally | Actor/gateway race tests and process lifecycle, host loss and restart pass; platform/load qualification remains |
+| M1: protocol, threat model, crypto qualification | Implemented locally | Strict parsers, MLS lifecycle/validation tests and all target builds/execution pass; threat boundaries documented |
+| M2: gateway and room lifecycle | Implemented locally | Actor/gateway race tests, real process lifecycle, host loss/restart, transport backpressure and slot cleanup pass across the local platform matrix |
 | M3: client identity/config/network | Implemented locally | Identity/config/TLS/auth, onboarding and lobby reconnection pass; real Keychain persistence/restart/cleanup passed on ARM64 and Intel under Rosetta |
 | M4: integrated E2EE | Implemented locally | Three actual clients exchange encrypted messages; post-removal rekey; native tamper/replay tests pass |
-| M5: terminal interface | Implemented locally | PTY input, sanitization, resize and terminal restoration tests pass; platform/manual qualification remains |
+| M5: terminal interface | Implemented locally | PTY input, sanitization, resize, terminal restoration and actual client workflows pass across the local platform matrix |
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | In progress | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; genuine signing, publication and final distribution verification remain |
 | M10: integration/fuzz/performance | Implemented locally | Complete suites pass on both Linux architectures and both Mac architectures; Intel Mac uses Rosetta and Linux AMD64 uses emulation; four long fuzz campaigns and scoped runtime measurements recorded |
-| M11: security/resource review | In progress | Go static/vulnerability/secret checks and Rust audits pass locally; bounded-resource and transport cleanup tests pass; final integration review and remaining platform execution required |
-| M12: reproducible signed releases | In progress | Isolated macOS ARM64 client builds and Linux ARM64 client/server builds match byte-for-byte; remaining target comparisons and genuine signing/publication required |
+| M11: security/resource review | Implemented locally | Static/vulnerability/secret checks, Rust audits, native fuzzing, bounded-resource/cleanup tests and security-sensitive integration checks pass; no external-audit claim |
+| M12: reproducible signed releases | In progress | Two isolated builds of every artifact match; common-commit/root six-artifact assembly verifies; genuine publisher provisioning, signing and publication remain |
 
 ## Required final behavior
 
@@ -46,8 +46,9 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 ## Release gates requiring operator infrastructure
 
 Publishing is blocked until genuine release-signing keys are provisioned outside
-the repository, private reporting is enabled, release hosting is configured, and
-all supported platforms have actual executed validation. Development test keys
+the repository, private reporting is enabled and release hosting is configured.
+All supported architectures have executed local validation; the Intel targets
+use Rosetta/TCG as recorded below. Development test keys
 must never become release trust roots.
 
 ## Current implementation boundaries
@@ -71,8 +72,9 @@ emulation. Public ACME issuance has not been tested; it is deployment-specific
 and does not block a release configured with existing TLS certificates/proxying.
 The signed terminal updater and client bootstrap are implemented and tested with
 real client executables. The publisher checks all six native artifact receipts,
-signs bootstrap files/checksums and emits verified TUF metadata. Its tests use
-synthetic cross-platform executables, not qualified release builds. Server
+signs bootstrap files/checksums and emits verified TUF metadata. Its contract tests
+use synthetic executables; separate real-application builds now reproduce on all
+six targets and pass assembled-artifact verification with one QA root. Server
 bootstrap downloads and the systemd installation lifecycle are implemented/tested.
 The read-only CI candidate workflow now performs the complete verification gate,
 two native builds per platform and six-artifact assembly; it has not run remotely.

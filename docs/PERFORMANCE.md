@@ -241,8 +241,14 @@ temporary public QA root. Both rebuilt identically; exact commit, hashes and
 toolchain are recorded in `VERIFICATION.md`. These size samples do not replace
 the earlier runtime latency/RSS measurements or establish another platform's size.
 
-Still required: TLS/WAN/production-host measurements, longer idle/churn and
-slow-consumer/load qualification, and all-platform release sizes.
+The all-target isolated build check subsequently measured Mac Intel at 20,942,624
+bytes, Mac ARM64 at 20,397,490, Linux AMD64 client/server at 17,137,576/9,470,076,
+and Linux ARM64 client/server at 15,955,056/8,716,412. Exact common commit/root and
+hashes are in `VERIFICATION.md`; these are QA artifacts rather than a public release.
+
+TLS/WAN/production-host measurements and longer idle/churn/slow-consumer soaks
+could extend this scoped baseline. They are additional assurance rather than
+new mandatory release gates.
 Do not substitute the crypto microbenchmark's operation rate for network message
 throughput: the gateway enforces per-device request limits. Runtime measurements
 must identify their transport, peer count, payload sizes, pacing, process versions

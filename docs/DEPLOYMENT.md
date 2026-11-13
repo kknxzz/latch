@@ -213,8 +213,9 @@ passwords, enrollment codes or TOTP secrets in process arguments or shell histor
 
 No genuine release trust root or signed public bootstrap is published yet.
 `latch update`, signed bootstrap and publisher contract tests pass locally;
-independent reproducible release builds and deployment qualification remain
-unfinished. See [the evidence ledger](IMPLEMENTATION.md) before deploying.
+all target suites, isolated QA rebuilds and both Linux installation lifecycles
+have now passed locally. Genuine publisher provisioning and signed distribution
+remain. See [the evidence ledger](IMPLEMENTATION.md) before deploying.
 
 ## Disposable VM installer qualification
 
@@ -225,4 +226,5 @@ paths/accounts, installs actual native server builds, checks TLS administration,
 enrolls and permanently bans a device, reinstalls, upgrades, triggers failed-start
 rollback, and verifies uninstall preserves network identity and the ban. It
 creates real system paths and a service account; run it only in that disposable
-VM. CI defines separate AMD64 and ARM64 VM jobs. Those jobs have not run yet.
+VM. Local QEMU guests have executed this test successfully on both architectures;
+CI also defines separate VM jobs, which have not run remotely.

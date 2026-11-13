@@ -4,7 +4,7 @@ Latch is an independently self-hosted, terminal-based encrypted communications
 system. The client and server are separate Go applications. Group encryption uses
 an embedded OpenMLS library; the gateway relays opaque ciphertext.
 
-**Implementation in progress. Not ready for production deployment.** See
+**Release preparation in progress. No supported production release is published yet.** See
 [the implementation checklist](docs/IMPLEMENTATION.md) for verified capabilities
 and outstanding release gates. No release signing keys or production credentials
 are included in this repository.
@@ -27,7 +27,8 @@ Security assumes public source code. Private cryptographic keys and protected
 configuration are the security boundary, not implementation secrecy.
 
 Signed installation, publisher setup and terminal update instructions are in
-[release verification](docs/RELEASES.md). Genuine release artifacts and production
-qualification remain outstanding.
+[release verification](docs/RELEASES.md). All four platform suites pass locally;
+all six QA artifacts reproduce byte-for-byte. Production signing, private
+reporting setup and public distribution remain outstanding.
 
 Licensed under the [MIT License](LICENSE).
