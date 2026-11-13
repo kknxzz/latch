@@ -24,6 +24,9 @@ func buildClient(t *testing.T, path, version string, root ...[]byte) {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("client build failed: %v: %s", err, output)
 	}
+	if err := os.Chmod(path, 0755); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestActualClientUpdatesItsExecutable(t *testing.T) {
@@ -32,6 +35,9 @@ func TestActualClientUpdatesItsExecutable(t *testing.T) {
 	}
 	r := fixture(t)
 	base := t.TempDir()
+	if err := os.Chmod(base, 0700); err != nil {
+		t.Fatal(err)
+	}
 	installed := filepath.Join(base, "latch")
 	replacement := filepath.Join(base, "replacement")
 	buildClient(t, installed, "0.1.0")

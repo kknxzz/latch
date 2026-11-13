@@ -90,7 +90,13 @@ func TestSystemdInstallerLifecycle(t *testing.T) {
 	})
 	build := func(version string) string {
 		t.Helper()
-		path := filepath.Join(t.TempDir(), "latch-server")
+		candidateDir := t.TempDir()
+		// TempDir's private ancestor does not imply that this child has mode
+		// 0700. Model an explicitly root-only download directory on Linux.
+		if err := os.Chmod(candidateDir, 0700); err != nil {
+			t.Fatal(err)
+		}
+		path := filepath.Join(candidateDir, "latch-server")
 		cmd := exec.CommandContext(ctx, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags", "-buildid= -s -w -X main.version="+version, "-o", path, "./cmd/latch-server")
 		cmd.Dir = ".."
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
@@ -191,7 +197,9 @@ func TestSystemdInstallerLifecycle(t *testing.T) {
 		}
 		if body != nil {
 			r.Header.Set("Content-Type", "application/json")
-			r.Header.Set("Origin", origin)
+			if origin == adminOrigin {
+				r.Header.Set("Origin", origin)
+			}
 		}
 		if csrf != "" {
 			r.Header.Set("X-CSRF-Token", csrf)

@@ -133,6 +133,9 @@ func main() {
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build platform fixture: %v: %s", err, output)
 	}
+	if err := os.Chmod(output, 0755); err != nil {
+		t.Fatal(err)
+	}
 }
 func publicationFixture(t *testing.T) publication {
 	t.Helper()
