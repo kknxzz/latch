@@ -101,13 +101,28 @@ func sample(t *testing.T, pid int) processSample {
 	return value
 }
 
+func performanceWindow(t *testing.T, name string, fallback, maximum int) time.Duration {
+	t.Helper()
+	seconds := fallback
+	if value := os.Getenv(name); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 10 || parsed > maximum {
+			t.Fatalf("%s must be an integer from 10 to %d", name, maximum)
+		}
+		seconds = parsed
+	}
+	return time.Duration(seconds) * time.Second
+}
+
 // Opt-in measurement of real binaries and the production network/app/crypto
 // path. Reports contain numbers only; no identities, keys or message bodies.
 func TestPerformanceReport(t *testing.T) {
 	if os.Getenv("LATCH_PERFORMANCE") != "1" {
 		t.Skip("explicit runtime measurement only")
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Minute)
+	idleWindow := performanceWindow(t, "LATCH_PERF_IDLE_SECONDS", 10, 600)
+	messageWindow := performanceWindow(t, "LATCH_PERF_MESSAGE_SECONDS", 10, 300)
+	ctx, cancel := context.WithTimeout(context.Background(), idleWindow+2*messageWindow+3*time.Minute)
 	defer cancel()
 	base, err := os.MkdirTemp("/tmp", "latch-benchmark-")
 	if err != nil {
@@ -182,7 +197,7 @@ func TestPerformanceReport(t *testing.T) {
 	time.Sleep(time.Second)
 	clientStart, serverStart := sample(t, clientPID), sample(t, server.cmd.Process.Pid)
 	started := time.Now()
-	time.Sleep(10 * time.Second)
+	time.Sleep(idleWindow)
 	clientEnd, serverEnd := sample(t, clientPID), sample(t, server.cmd.Process.Pid)
 	window := time.Since(started).Seconds()
 	report.Idle = idleMeasurement{WindowSeconds: window, ClientRSSBytes: clientEnd.RSSBytes, ServerRSSBytes: serverEnd.RSSBytes, ClientCPUPercent: (clientEnd.CPUSeconds - clientStart.CPUSeconds) / window * 100, ServerCPUPercent: (serverEnd.CPUSeconds - serverStart.CPUSeconds) / window * 100, CPUResolutionSeconds: max(clientEnd.ResolutionSeconds, serverEnd.ResolutionSeconds)}
@@ -228,7 +243,7 @@ func TestPerformanceReport(t *testing.T) {
 	closePeers()
 	time.Sleep(time.Second)
 	for _, size := range []int{128, 4096} {
-		report.Messages = append(report.Messages, measureMessages(t, ctx, serverURL, ids[:2], size))
+		report.Messages = append(report.Messages, measureMessages(t, ctx, serverURL, ids[:2], size, messageWindow))
 	}
 	server.stop(t, syscall.SIGTERM)
 	if server.err != nil {
@@ -268,7 +283,7 @@ func (s *measuredSender) Send(kind string, body any) (string, error) {
 	return id, err
 }
 
-func measureMessages(t *testing.T, ctx context.Context, url string, ids []identity.Identity, payloadBytes int) messageMeasurement {
+func measureMessages(t *testing.T, ctx context.Context, url string, ids []identity.Identity, payloadBytes int, window time.Duration) messageMeasurement {
 	t.Helper()
 	var connections [2]*network.Connection
 	var models [2]*app.Model
@@ -327,7 +342,7 @@ func measureMessages(t *testing.T, ctx context.Context, url string, ids []identi
 	ticker := time.NewTicker(25 * time.Millisecond)
 	defer ticker.Stop()
 	warmUntil := time.Now().Add(4 * time.Second)
-	finish := warmUntil.Add(10 * time.Second)
+	finish := warmUntil.Add(window)
 	sequence := 0
 	var measuredStart time.Time
 	for time.Now().Before(finish) {

@@ -134,6 +134,34 @@ The PTY child is identified using `pgrep`. These standard OS tools are developme
 measurement prerequisites, not application runtime processes. Normal tests skip
 the measurement harness.
 
+For an extended run spanning several heartbeat intervals and display-buffer
+eviction, set the explicit measurement windows:
+
+```sh
+cd client
+LATCH_PERFORMANCE=1 LATCH_PERF_IDLE_SECONDS=60 LATCH_PERF_MESSAGE_SECONDS=30 \
+  LATCH_PERF_REPORT=/absolute/new-extended-report.json \
+  go test -run='^TestPerformanceReport$' -count=1 -timeout=8m -v ./tests
+```
+
+Idle windows accept 10–600 seconds; message windows accept 10–300 seconds for
+each payload scenario. Increase the Go test timeout for the longest settings.
+The internal deadline includes the chosen windows and a bounded setup allowance.
+
+An extended run completed on the same host in 136.13 seconds. Over 60.013 seconds
+idle, the terminal client used 16,629,760 RSS bytes and the gateway 15,515,648.
+Both recorded 0.00 CPU seconds at 0.01-second accounting resolution (roughly a
+0.017% one-core observation bound over this window). The window spans several
+heartbeat intervals. With 100 authenticated connections, gateway RSS was
+22,462,464 bytes; connection setup p50/p95 was 433/989 microseconds.
+
+Each 30-second message scenario offered 1201 requests, delivered 601 verified
+plaintexts and rate-limited 600, about 20.03 delivered messages/sec. Delivery
+p50/p95 was 1439/1735 microseconds for 128-byte plaintexts and 2329/2888 for
+4096-byte plaintexts. Each scenario exceeded the 500-line display capacity.
+The gateway shut down cleanly before the report was written. This extends the
+short baseline; it is still not a long-duration soak or production qualification.
+
 ## Relay fanout serialization, 2026-11-13
 
 The gateway now encodes each validated application event once and retains that
@@ -158,6 +186,46 @@ Tests check canonical frame parity, queue bounds and rekey barrier behavior.
 ```sh
 cd server
 go test -run='^$' -bench=BenchmarkMessageFanout -benchmem -count=3 ./internal/gateway
+```
+
+## Resource-bound review
+
+The following are explicit implementation bounds, not measured heap ceilings:
+
+| Resource | Bound | Enforcement |
+|---|---|---|
+| Registered devices, including revoked devices | 10,000 | Enrollment database transaction |
+| Pending enrollment challenges / source buckets | 256 / 4096 | Enrollment service admission |
+| Persistent enrollment attempt buckets | 4096 | Enrollment transaction, with expired-entry pruning |
+| Room actor command backlog | 128 | Bounded command channel, context cancellation |
+| Per-room PIN-attempt / ban maps | At most 10,000 keys each | Attempt admission plus the registered-device cap; state discarded with room |
+| Per-device relay queue | 64 frames and 256 KiB encoded bytes | Queue admission under its mutex |
+| Gateway frame / ciphertext | 64 KiB / 16 KiB | Read limit, parser and room validation |
+| Client received-event backlog | 64 events | Reader disconnects on overflow |
+| Client pending requests | 64 | State-machine request admission |
+| Client display | 500 lines and 2 MiB text | Oldest-line eviction |
+| Native client sessions / ABI packet | 16 / 64 KiB | Native registry and ABI input validation |
+| Dashboard events | 1000 | In-memory ring |
+| Concurrent release downloads | 4 | Nonblocking admission semaphore |
+
+At the default 100-device cap, fully occupied relay queues account for at most
+25 MiB of encoded bytes. This excludes in-flight writes, HTTP/WebSocket buffers,
+decoded objects, goroutine stacks, database mappings, TLS and allocator overhead.
+Shared immutable frames reduce physical duplication but each queue still charges
+the full encoded length. The queue bound must not be presented as a total RSS
+bound. Raising device/room limits also requires revisiting systemd limits.
+
+The real WebSocket lifecycle regression exercises 100 abrupt host disconnects
+per invocation, requiring room, membership and transport-slot cleanup before
+reconnecting. The stalled-transport test blocks a server connection's writes at
+the transport boundary: the production five-second write context must close that
+connection and remove its hosted room while a second client creates another room.
+Two race-enabled repetitions passed. This is deterministic timeout/isolation
+evidence, not an OS TCP-buffer saturation benchmark or a long-duration leak test.
+
+```sh
+cd server
+go test -race -count=2 -run='TestRepeatedHostDisconnect|TestBlockedTransport' ./internal/gateway
 ```
 
 ## Release binary size and remaining measurements

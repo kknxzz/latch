@@ -278,6 +278,13 @@ connection closes. The existing five-second production timeout closes it,
 releases its room and transport slot, and preserves a second client's room.
 No production timeout or transport behavior was changed for this test.
 
+The configurable runtime harness then passed an extended 136.13-second run:
+60 seconds idle across heartbeat intervals and 30 seconds per encrypted message
+scenario. Each scenario delivered 601 checked plaintexts with 600 rate-limited
+requests. Resource and latency numbers are recorded in `PERFORMANCE.md` with
+their transport/environment scope. Targeted Go vet checks passed for the updated
+client test harness and gateway tests.
+
 ## Remaining verification
 
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
