@@ -18,6 +18,7 @@ import (
 	"latch.local/client/internal/app"
 	"latch.local/client/internal/config"
 	"latch.local/client/internal/identity"
+	"latch.local/client/internal/licenses"
 	"latch.local/client/internal/network"
 	"latch.local/client/internal/tui"
 	"latch.local/client/internal/update"
@@ -39,6 +40,9 @@ type options struct {
 }
 
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "licenses" {
+		return licenses.Run(args[1:])
+	}
 	if len(args) > 0 && args[0] == "update" {
 		return runUpdate(args[1:])
 	}

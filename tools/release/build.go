@@ -158,6 +158,9 @@ func buildNative(b buildOptions) error {
 			flags += " -X latch.local/client/internal/update.rootBase64=" + base64.StdEncoding.EncodeToString(root)
 		}
 		binary := filepath.Join(b.Output, target.Name)
+		if err = generateNotices(source, module, true); err != nil {
+			return err
+		}
 		if err = runBuild(ctx, filepath.Join(source, module), targetEnv, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags", flags, "-o", binary, "./cmd/"+entry); err != nil {
 			return err
 		}

@@ -29,6 +29,11 @@ own publisher and give network users that operator's verified public key.
 
 ## Native artifacts and receipts
 
+Both applications embed offline dependency notices, exportable with
+`licenses --output NEW_ZIP_PATH`. Regenerate and check the committed bundles as
+described in [dependency notices](../third_party/README.md). The native builder
+rejects stale bundles before compiling an artifact.
+
 Build all four clients and both Linux servers from the exact reviewed commit,
 using the pinned toolchains in `toolchains.json`. Every client must embed the
 same public `root.json` as the publisher. The linker values are:

@@ -16,11 +16,22 @@ func main() {
 }
 func run(args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: latch-release build|verify|init|inspect|publish")
+		return errors.New("usage: latch-release build|verify|init|inspect|publish|notices")
 	}
 	flags := flag.NewFlagSet(args[0], flag.ContinueOnError)
 	keys := flags.String("keys-dir", "", "Protected operator signing directory")
 	switch args[0] {
+	case "notices":
+		source := flags.String("source", "", "Absolute repository directory")
+		component := flags.String("component", "", "client or server")
+		check := flags.Bool("check", false, "Reject a stale embedded notice archive")
+		if err := flags.Parse(args[1:]); err != nil {
+			return err
+		}
+		if flags.NArg() != 0 {
+			return errors.New("unexpected arguments")
+		}
+		return generateNotices(*source, *component, *check)
 	case "verify":
 		artifacts := flags.String("artifacts", "", "Absolute directory containing all six artifacts and receipts")
 		root := flags.String("root", "", "Independently verified public TUF root")

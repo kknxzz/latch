@@ -23,6 +23,7 @@ import (
 	"latch.local/server/internal/config"
 	"latch.local/server/internal/distribution"
 	"latch.local/server/internal/gateway"
+	"latch.local/server/internal/licenses"
 )
 
 var version = "0.1.0-dev"
@@ -43,6 +44,9 @@ func main() {
 	}
 }
 func run(args []string) error {
+	if len(args) > 0 && args[0] == "licenses" {
+		return licenses.Run(args[1:])
+	}
 	if len(args) == 3 && args[0] == "version" && args[1] == "--check-upgrade" {
 		return checkUpgrade(version, args[2])
 	}

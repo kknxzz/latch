@@ -16,5 +16,8 @@ for module in server client tools/release; do
     go vet ./...
   )
 done
+for component in client server; do
+  (cd "$root/tools/release" && go run . notices --source "$root" --component "$component" --check)
+done
 # Fuzz campaigns, performance and platform installation gates remain tracked in
 # docs/IMPLEMENTATION.md; this command does not claim them.

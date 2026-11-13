@@ -287,6 +287,14 @@ client test harness and gateway tests.
 
 ## Remaining verification
 
+Offline dependency-notice exports were added on 2026-11-13. The complete local
+race/integration script and deterministic archive checks passed. Both application
+export tests also passed under race detection, preserving ZIP contents and
+refusing existing output files. Security checks passed after replacing a
+deprecated ZIP timestamp API; the refreshed Rust advisory database contained
+1509 advisories. The bundles preserve original attribution, exact crate source
+references and reviewed missing-file exceptions documented in `third_party/`.
+
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
 was available on this development host, so installation/rollback/uninstall and
 the service sandbox have not been executed. No public ACME request was made.
