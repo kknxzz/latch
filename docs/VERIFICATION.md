@@ -272,6 +272,12 @@ Each cycle requires zero room memberships, rooms and occupied gateway transport
 slots before reusing the same device identity. This checks state/slot reclamation;
 it is not a long-duration RSS or goroutine leak qualification.
 
+The blocked-transport regression also passed twice under the race detector.
+A test-only network wrapper stalls actual server WebSocket writes until the
+connection closes. The existing five-second production timeout closes it,
+releases its room and transport slot, and preserves a second client's room.
+No production timeout or transport behavior was changed for this test.
+
 ## Remaining verification
 
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
