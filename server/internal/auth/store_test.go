@@ -58,6 +58,42 @@ func TestAtomicSingleUseEnrollment(t *testing.T) {
 	}
 }
 
+func TestUnchangedNicknameDoesNotWriteAndStillChecksBan(t *testing.T) {
+	s, _, path := store(t)
+	code, _, err := s.GenerateCode()
+	if err != nil {
+		t.Fatal(err)
+	}
+	uuid := NewUUID()
+	if _, err = s.Enroll(code, uuid, key(t), "Saved Nick", "source"); err != nil {
+		t.Fatal(err)
+	}
+	before, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.SetNickname(uuid, "Saved Nick"); err != nil {
+		t.Fatal(err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || !bytes.Equal(before, after) {
+		t.Fatal("unchanged nickname mutated the database", err)
+	}
+	if err = s.SetNickname(uuid, "Changed Nick"); err != nil {
+		t.Fatal(err)
+	}
+	device, err := s.Device(uuid)
+	if err != nil || device.Nickname != "Changed Nick" {
+		t.Fatal("changed nickname was not persisted", err)
+	}
+	if err = s.Ban(uuid); err != nil {
+		t.Fatal(err)
+	}
+	if err = s.SetNickname(uuid, "Changed Nick"); !errors.Is(err, ErrBanned) {
+		t.Fatal("unchanged nickname skipped revocation", err)
+	}
+}
+
 func TestCodeExpiryAndReplacement(t *testing.T) {
 	s, now, _ := store(t)
 	code, _, _ := s.GenerateCode()

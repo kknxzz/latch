@@ -301,6 +301,18 @@ func (s *Store) SetNickname(uuid, nickname string) error {
 	if !ValidNickname(nickname) {
 		return ErrEnrollment
 	}
+	// Authentication commonly repeats the saved nickname. Avoid a write
+	// transaction/fsync when there is no change, while still checking revocation.
+	current, err := s.Device(uuid)
+	if err != nil {
+		return err
+	}
+	if current.Banned {
+		return ErrBanned
+	}
+	if current.Nickname == nickname {
+		return nil
+	}
 	return s.db.Update(func(tx *bolt.Tx) error {
 		var d Device
 		b := tx.Bucket(devices)
