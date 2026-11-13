@@ -14,7 +14,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | In progress | Setup/doctor/TLS/PTY, TUF self-update, restricted release hosting and signed client install/enrollment through the real gateway pass; fresh systemd VM, ACME issuance, real publication and mirror qualification remain |
-| M10: integration/fuzz/performance | In progress | Real-client process scenarios and four thirty-minute Go/native sanitizer fuzz campaigns pass; performance report remains |
+| M10: integration/fuzz/performance | In progress | Real-client scenarios and four thirty-minute fuzz campaigns pass; measured Go/native crypto allocations and timing recorded; full runtime/network/load measurements remain |
 | M11: security/resource review | In progress | Go static/vulnerability, secret scans and updated Rust advisory scan pass locally; platform qualification, independent review and leak/load review remain |
 | M12: reproducible signed releases | In progress | Two isolated native macOS ARM64 builds match byte-for-byte; native builder and receipts implemented; other platforms, independent operator rebuilds and genuine signatures/publication remain |
 

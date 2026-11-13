@@ -251,6 +251,11 @@ end-to-end performance claim follows from them. Client/gateway RSS, idle CPU,
 per-connection memory, connection overhead, delivery latency, encryption/relay
 throughput, allocation profiles and release binary sizes remain to be measured.
 
+Subsequent crypto allocation/timing measurements are recorded with reproducible
+commands and their exact scope in [PERFORMANCE.md](PERFORMANCE.md). They cover
+the actual Go/native message ABI and native allocation counters, not the remaining
+network, idle CPU/RSS or full load qualification.
+
 ## Remaining verification
 
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine

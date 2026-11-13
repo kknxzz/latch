@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func device(t *testing.T, name string) (*Session, Identity) {
+func device(t testing.TB, name string) (*Session, Identity) {
 	t.Helper()
 	pub, key, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
