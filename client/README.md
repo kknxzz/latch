@@ -21,6 +21,11 @@ before Go validates cgo linker inputs. It does not disable Go's validation.
 No Rust shared library or runtime process is needed by the resulting executable.
 The client module never imports the server module.
 
+The current Linux release-build baseline is Ubuntu 24.04/glibc 2.39; the verified
+ARM64 client references that libc version. It is not a universally static Linux
+binary. Older Linux distributions have not been qualified. The server is built
+separately with cgo disabled and has no corresponding libc dependency.
+
 For signed binary installation, see [release verification](../docs/RELEASES.md).
 Download and verify the script as a file before running it. Enrollment is then
 handled by the authenticated binary, which prompts through the terminal even

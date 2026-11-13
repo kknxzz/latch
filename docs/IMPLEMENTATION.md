@@ -16,7 +16,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M9: installers and updates | In progress | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; genuine signing, publication and final distribution verification remain |
 | M10: integration/fuzz/performance | In progress | Complete native Linux ARM64 suite and macOS ARM64 checks pass; AMD64 full suite running; four long fuzz campaigns and scoped runtime measurements recorded; remaining platform execution required |
 | M11: security/resource review | In progress | Go static/vulnerability/secret checks and Rust audits pass locally; bounded-resource and transport cleanup tests pass; final integration review and remaining platform execution required |
-| M12: reproducible signed releases | In progress | Two isolated macOS ARM64 builds match; native builder and receipts implemented; remaining target rebuild comparisons and genuine signatures/publication required |
+| M12: reproducible signed releases | In progress | Isolated macOS ARM64 client builds and Linux ARM64 client/server builds match byte-for-byte; remaining target comparisons and genuine signing/publication required |
 
 ## Required final behavior
 

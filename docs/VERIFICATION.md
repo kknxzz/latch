@@ -235,6 +235,25 @@ a production signing root, and these binaries were not published. Removing the
 Mach-O UUID was tried and rejected because the current dynamic loader requires
 it; the final builder preserves the native linker's deterministic UUID.
 
+The actual native builder also completed two isolated Linux ARM64 builds from
+`ca7b359d813b40cf07583e78c8407540fa79b074`, version `0.1.0`, using a separate
+temporary QA root. Each build exported the exact commit, used fresh compilation
+caches and reused only verified dependency sources with downloads disabled.
+Both client and server passed native JSON execution/receipt checks and compared
+byte-for-byte. Building under `umask 0002` still produced mode `0755` executables.
+
+| Artifact | Bytes | SHA-256 |
+|---|---:|---|
+| Linux ARM64 client | 15,955,056 | `8e7852c64a60da9d5f622a8a4fc262976a6e8ee89183c3cb5c3278db83af88a3` |
+| Linux ARM64 server | 8,716,412 | `8d141a28959c220a59bf4166590f6ff962b09a10cb037b439b858f8759068c83` |
+
+Environment: Ubuntu 24.04.5 ARM64, Go 1.27.4, Rust 1.99.1, GCC
+13.3.0 (`Ubuntu 13.3.0-6ubuntu2~24.04.1`). The embedded public QA root SHA-256 is
+`582e3c28556cbb028d03994cddcc0c4726d375990c532060c51105b31830df97`.
+These are development verification artifacts, not published releases or a
+production authority. The client references GLIBC_2.39; the server uses cgo-free
+Go. This qualifies this build environment, not older Linux distributions.
+
 ## Initial protocol microbenchmark
 
 Apple M4, 10 logical CPUs, 24 GiB RAM; macOS/Go versions above. Command, from

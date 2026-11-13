@@ -235,6 +235,12 @@ client with its test public root embedded. Its exact source/toolchain/hash are
 in [VERIFICATION.md](VERIFICATION.md#native-build-reproducibility). This is not a
 qualified public release or a size measurement for the other five artifacts.
 
+Subsequent isolated Linux ARM64 release-build verification measured a
+15,955,056-byte client and 8,716,412-byte server, including offline notices and a
+temporary public QA root. Both rebuilt identically; exact commit, hashes and
+toolchain are recorded in `VERIFICATION.md`. These size samples do not replace
+the earlier runtime latency/RSS measurements or establish another platform's size.
+
 Still required: TLS/WAN/production-host measurements, longer idle/churn and
 slow-consumer/load qualification, and all-platform release sizes.
 Do not substitute the crypto microbenchmark's operation rate for network message
