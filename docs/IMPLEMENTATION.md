@@ -14,7 +14,7 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | In progress | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; genuine signing, publication and final distribution verification remain |
-| M10: integration/fuzz/performance | In progress | Complete native Linux ARM64 suite and macOS ARM64 checks pass; AMD64 full suite running; four long fuzz campaigns and scoped runtime measurements recorded; remaining platform execution required |
+| M10: integration/fuzz/performance | In progress | Complete Linux ARM64 and AMD64 suites pass locally; AMD64 uses emulation with serial package scheduling; macOS ARM64 checks, four long fuzz campaigns and runtime measurements recorded; macOS Intel execution required |
 | M11: security/resource review | In progress | Go static/vulnerability/secret checks and Rust audits pass locally; bounded-resource and transport cleanup tests pass; final integration review and remaining platform execution required |
 | M12: reproducible signed releases | In progress | Isolated macOS ARM64 client builds and Linux ARM64 client/server builds match byte-for-byte; remaining target comparisons and genuine signing/publication required |
 
@@ -75,8 +75,9 @@ bootstrap downloads and the systemd installation lifecycle are implemented/teste
 The read-only CI candidate workflow now performs the complete verification gate,
 two native builds per platform and six-artifact assembly; it has not run remotely.
 Built-in release-file hosting and its TLS/process isolation tests pass locally.
-The complete Linux ARM64 verification script has executed successfully locally;
-the complete Linux AMD64 run is in progress. macOS Intel client and race-test
+The complete verification script has passed locally on both Linux architectures;
+AMD64 uses `GOFLAGS=-p=1` to avoid CPU contention between emulated test packages.
+Race detection and concurrency within test packages remain enabled. macOS Intel client and race-test
 binaries compile, but execution awaits Rosetta or an Intel Mac. Hosted CI is an
 alternative execution route, not a separate requirement when equivalent checks
 are executed locally. An external audit, indefinite soak testing and a second

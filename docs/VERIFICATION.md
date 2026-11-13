@@ -332,8 +332,17 @@ credentials/certificates inside the disposable VM.
 The complete `sh scripts/test-local.sh` then passed on native Linux ARM64:
 Rust tests/format/Clippy, all three Go modules' race tests and vet, actual terminal
 client/gateway scenarios, signed self-update, publisher/bootstrap contracts and
-exact committed notice-archive comparisons. The full AMD64 suite is still
-running; passing its installer test alone does not establish full client support.
+exact committed notice-archive comparisons. The complete AMD64 script also passed
+under TCG with `GOFLAGS=-p=1`: independent test packages execute serially, while
+race detection and explicit in-package concurrency remain enabled. Actual signed
+self-update took 177.324 seconds, real-client integration 309.063 seconds and
+publisher/bootstrap tests 194.226 seconds under emulation. Both notice comparisons
+also completed successfully.
+
+The first concurrent AMD64 run overloaded the emulated CPU enough to exceed the
+existing local administrator RPC deadline. That recovery test passed twice in
+isolation (4.16 and 3.22 seconds for the whole init/reset scenario), then passed
+as part of the complete serial-package run. Production deadlines were unchanged.
 
 Execution exposed fixture assumptions about `TempDir`, Go output modes under
 `umask 0002`, and native enrollment requests carrying browser `Origin` headers.

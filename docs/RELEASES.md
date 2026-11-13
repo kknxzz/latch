@@ -1,8 +1,9 @@
 # Building and authenticating releases
 
 Release tooling is implemented, but no genuine public signing authority or
-qualified release has been published. Platform tests, fresh Linux installation
-and two independent reproducible builds remain release gates. Do not distribute
+qualified release has been published. Both local Linux verification suites and
+systemd installation lifecycles pass. Remaining platform execution, target build
+comparisons and genuine signing/publication remain release gates. Do not distribute
 test keys as project trust roots.
 
 ## Operator keys
