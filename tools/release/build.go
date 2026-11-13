@@ -164,6 +164,9 @@ func buildNative(b buildOptions) error {
 		if err = runBuild(ctx, filepath.Join(source, module), targetEnv, "go", "build", "-mod=readonly", "-trimpath", "-buildvcs=false", "-ldflags", flags, "-o", binary, "./cmd/"+entry); err != nil {
 			return err
 		}
+		if err = os.Chmod(binary, 0755); err != nil {
+			return err
+		}
 		if err = inspect(binary, target.Name, b.Root, b.Version, b.Commit); err != nil {
 			return err
 		}

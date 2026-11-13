@@ -17,6 +17,9 @@ func TestNoticeCollectionAndDeterministicArchive(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "LICENSE", "MIT.LICENSE"), []byte("Original attribution\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Chmod(filepath.Join(dir, "LICENSE", "MIT.LICENSE"), 0664); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(dir, "src.go"), []byte("private source path"), 0600); err != nil {
 		t.Fatal(err)
 	}

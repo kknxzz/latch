@@ -14,6 +14,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 type noticeBundle map[string][]byte
@@ -22,7 +24,7 @@ func (b noticeBundle) add(name, source string) error {
 	if !filepath.IsLocal(name) || strings.Contains(name, "\\") {
 		return errors.New("unsafe notice archive path")
 	}
-	data, err := readRegular(source, 4<<20, false)
+	data, err := readNotice(source)
 	if err != nil {
 		return fmt.Errorf("notice %s: %w", name, err)
 	}
@@ -31,6 +33,28 @@ func (b noticeBundle) add(name, source string) error {
 	}
 	b[name] = data
 	return nil
+}
+
+// Public source notices may be root-owned (for example /usr/local/go/LICENSE).
+// Do not apply private-key/artifact ownership policy to these inputs. Retain
+// regular-file, no-symlink and size bounds; source is the reviewed build input.
+func readNotice(path string) ([]byte, error) {
+	const maximum = 4 << 20
+	fd, err := unix.Open(path, unix.O_RDONLY|unix.O_CLOEXEC|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return nil, err
+	}
+	file := os.NewFile(uintptr(fd), path)
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil || !info.Mode().IsRegular() || info.Size() > maximum {
+		return nil, errors.New("notice must be a bounded regular file")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, maximum+1))
+	if err != nil || len(data) > maximum {
+		return nil, errors.New("notice exceeded its read limit")
+	}
+	return data, nil
 }
 
 func noticeName(name string) bool {
