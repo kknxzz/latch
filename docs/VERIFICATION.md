@@ -350,10 +350,26 @@ Fixtures now set intended modes and headers explicitly. Release builds explicitl
 set executable mode `0755`. Public notice inputs can be root-owned; private-key
 and artifact ownership/permission checks remain strict.
 
-The macOS Intel MLS library, actual client executable and all client Go race-test
-executables cross-compile as x86_64 in an isolated export. They have not executed:
-this Apple Silicon host currently lacks Rosetta. Intel execution and Keychain
-qualification remain outstanding; compilation is not treated as runtime evidence.
+After explicit operator approval, Rosetta was installed and the complete macOS
+Intel script passed in an isolated source export. The actual x86_64 client version
+probe, Intel Rust tests/Clippy and all three Go modules' race/vet/process tests
+executed successfully. Signed self-update took 20.376 seconds, actual client
+integration 49.574 seconds and publisher/bootstrap tests 17.468 seconds. This is
+Intel execution under Rosetta, not a physical Intel Mac or every macOS version.
+
+The installed Apple command-line tools are ARM-only. Temporary `cc`, `clang`,
+archive/link-tool and `xcrun` wrappers invoke those tools using `arch -arm64` while
+emitting x86_64 objects. Intel Rust 1.99.1 runs directly under Rosetta, and Go
+selects `GOARCH=amd64`; SDK 27.2 and deployment target 13.0 were explicit. These
+adapters live only in temporary test tooling and do not alter runtime validation.
+
+The separate, operator-approved `TestNativeKeychainPersistence` passed under race
+detection on ARM64 (1.12 seconds) and Intel/Rosetta (1.36 seconds). Each run creates
+one fresh, unregistered identity, verifies unchanged data after a duplicate-write
+rejection and reads it from a second process. Cleanup deletes the exact account;
+both private account records were removed afterward. Existing Keychain entries
+were not modified. Ordinary tests skip this OS-store probe unless explicitly
+enabled; it emits no private-key data or credential values.
 
 ## Remaining verification
 

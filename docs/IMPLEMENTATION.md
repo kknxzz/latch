@@ -7,14 +7,14 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 |---|---|---|
 | M1: protocol, threat model, crypto qualification | In progress | Strict parsers; MLS create/add/remove/update tests; all target builds |
 | M2: gateway and room lifecycle | Implemented locally | Actor/gateway race tests and process lifecycle, host loss and restart pass; platform/load qualification remains |
-| M3: client identity/config/network | Implemented locally | Identity/config/TLS/auth, onboarding and lobby reconnection tests pass; native credential-store qualification remains |
+| M3: client identity/config/network | Implemented locally | Identity/config/TLS/auth, onboarding and lobby reconnection pass; real Keychain persistence/restart/cleanup passed on ARM64 and Intel under Rosetta |
 | M4: integrated E2EE | Implemented locally | Three actual clients exchange encrypted messages; post-removal rekey; native tamper/replay tests pass |
 | M5: terminal interface | Implemented locally | PTY input, sanitization, resize and terminal restoration tests pass; platform/manual qualification remains |
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
 | M9: installers and updates | In progress | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; genuine signing, publication and final distribution verification remain |
-| M10: integration/fuzz/performance | In progress | Complete Linux ARM64 and AMD64 suites pass locally; AMD64 uses emulation with serial package scheduling; macOS ARM64 checks, four long fuzz campaigns and runtime measurements recorded; macOS Intel execution required |
+| M10: integration/fuzz/performance | Implemented locally | Complete suites pass on both Linux architectures and both Mac architectures; Intel Mac uses Rosetta and Linux AMD64 uses emulation; four long fuzz campaigns and scoped runtime measurements recorded |
 | M11: security/resource review | In progress | Go static/vulnerability/secret checks and Rust audits pass locally; bounded-resource and transport cleanup tests pass; final integration review and remaining platform execution required |
 | M12: reproducible signed releases | In progress | Isolated macOS ARM64 client builds and Linux ARM64 client/server builds match byte-for-byte; remaining target comparisons and genuine signing/publication required |
 
@@ -56,7 +56,9 @@ The runnable server and terminal client are exercised together as compiled
 processes. The process suite covers enrollment, three-member encrypted exchange,
 room PINs, kicks, new epochs, abrupt host loss, gateway restart and lobby recovery.
 The server database and operational output are checked for a message canary.
-Keychain integration compiles but no test has written to the developer's Keychain.
+Opt-in native Keychain persistence tests passed on both Mac architectures with
+explicit operator permission. Each created and deleted only its own synthetic,
+unregistered identity and verified loading in a second process.
 
 The central bounded room actor handles the initial network size, rather than
 spawning an actor for every room. Transport writes remain independently bounded.
@@ -77,8 +79,9 @@ two native builds per platform and six-artifact assembly; it has not run remotel
 Built-in release-file hosting and its TLS/process isolation tests pass locally.
 The complete verification script has passed locally on both Linux architectures;
 AMD64 uses `GOFLAGS=-p=1` to avoid CPU contention between emulated test packages.
-Race detection and concurrency within test packages remain enabled. macOS Intel client and race-test
-binaries compile, but execution awaits Rosetta or an Intel Mac. Hosted CI is an
+Race detection and concurrency within test packages remain enabled. The complete
+macOS Intel suite now passes under Rosetta, using Intel Rust/Go programs and
+Apple's ARM-host compiler tools emitting x86_64 code. Hosted CI is an
 alternative execution route, not a separate requirement when equivalent checks
 are executed locally. An external audit, indefinite soak testing and a second
 operator's rebuild are additional assurance, not new mandatory v0.1.0 gates.

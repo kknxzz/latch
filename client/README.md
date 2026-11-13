@@ -21,6 +21,21 @@ before Go validates cgo linker inputs. It does not disable Go's validation.
 No Rust shared library or runtime process is needed by the resulting executable.
 The client module never imports the server module.
 
+Ordinary tests do not touch the macOS Keychain. With explicit permission, its
+native persistence test creates one unregistered identity under a fresh UUID,
+loads it in a second process, rejects replacement and deletes that exact entry:
+
+```sh
+probe_dir=$(mktemp -d "${TMPDIR:-/tmp}/latch-keychain.XXXXXX")
+LATCH_NATIVE_KEYCHAIN_TEST=1 LATCH_KEYCHAIN_TEST_RECORD="$probe_dir/account" \
+  go test -race -count=1 -timeout=60s -run='^TestNativeKeychainPersistence$' ./internal/identity
+```
+
+Run this from `client/` only when you intend to modify your OS credential store.
+Successful cleanup removes the account record. If the process is killed, that
+private record identifies the synthetic account for targeted cleanup; never
+delete unrelated Keychain entries. The test does not print identity secrets.
+
 The current Linux release-build baseline is Ubuntu 24.04/glibc 2.39; the verified
 ARM64 client references that libc version. It is not a universally static Linux
 binary. Older Linux distributions have not been qualified. The server is built
