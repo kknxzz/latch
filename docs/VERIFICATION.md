@@ -266,6 +266,12 @@ package cross-compiles for Linux AMD64 and ARM64; those executables were not run
 on this macOS host. The opt-in runtime harness completed three local runs,
 including a final run requiring clean gateway shutdown before reporting.
 
+A real WebSocket lifecycle test subsequently passed three repetitions under the
+race detector: 100 authenticated connect/create/abrupt-disconnect cycles per run.
+Each cycle requires zero room memberships, rooms and occupied gateway transport
+slots before reusing the same device identity. This checks state/slot reclamation;
+it is not a long-duration RSS or goroutine leak qualification.
+
 ## Remaining verification
 
 The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine

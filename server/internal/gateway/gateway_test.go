@@ -151,6 +151,46 @@ func TestNicknameChangeIsPersistedBeforeAcknowledgment(t *testing.T) {
 	}
 }
 
+func TestRepeatedHostDisconnectReleasesTransportAndRoom(t *testing.T) {
+	g, store, server := fixture(t)
+	device, key := enroll(t, store, server)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	for cycle := 0; cycle < 100; cycle++ {
+		conn := connect(t, server, device, key)
+		send(t, conn, "room.create", protocol.Create{GroupID: make([]byte, 16), KeyPackage: []byte{1}})
+		if event := read(t, conn); event.Type != "room.created" {
+			t.Fatalf("cycle %d: room creation failed: %s", cycle, event.Type)
+		}
+		stats, err := g.Stats(ctx)
+		if err != nil || stats.Connections != 1 || stats.Rooms != 1 {
+			t.Fatalf("cycle %d: unexpected active state: %+v, %v", cycle, stats, err)
+		}
+		// Abrupt transport loss exercises the same cleanup as a killed client.
+		if err := conn.CloseNow(); err != nil {
+			t.Fatal(err)
+		}
+		ticker := time.NewTicker(time.Millisecond)
+		for {
+			stats, err = g.Stats(ctx)
+			if err != nil {
+				ticker.Stop()
+				t.Fatal(err)
+			}
+			if stats.Connections == 0 && stats.Rooms == 0 && len(g.slots) == 0 {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				ticker.Stop()
+				t.Fatalf("cycle %d: leaked room or transport slot: %+v, slots=%d", cycle, stats, len(g.slots))
+			case <-ticker.C:
+			}
+		}
+		ticker.Stop()
+	}
+}
+
 func TestDuplicateIdentityConnectionKeepsOriginalHost(t *testing.T) {
 	g, store, server := fixture(t)
 	device, key := enroll(t, store, server)
