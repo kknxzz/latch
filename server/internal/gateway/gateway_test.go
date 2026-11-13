@@ -298,3 +298,31 @@ func TestOutboxBoundsAndBarrier(t *testing.T) {
 		t.Fatal("closed queue accepted")
 	}
 }
+
+func TestSharedFrameBoundsAndBarrier(t *testing.T) {
+	q := newOutbox()
+	defer q.close()
+	body := protocol.Message{RoomID: "K7P9X2M4QA", Revision: 1, Epoch: 1, SenderUUID: "11111111-1111-4111-8111-111111111111", Ciphertext: []byte{1}}
+	frame, err := protocol.Encode("message.deliver", "", body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !q.send(rooms.Event{Wire: frame, RoomID: body.RoomID, Application: true}) {
+		t.Fatal("shared frame was rejected")
+	}
+	q.dropRoom(body.RoomID)
+	if !q.send(rooms.Event{Type: "room.prepare", Body: protocol.Empty{}}) {
+		t.Fatal("barrier event rejected")
+	}
+	data, ok := q.next(context.Background())
+	if !ok {
+		t.Fatal("barrier event missing")
+	}
+	event, err := protocol.Decode(data)
+	if err != nil || event.Type != "room.prepare" {
+		t.Fatal("shared frame survived rekey barrier", err)
+	}
+	if q.send(rooms.Event{Wire: []byte{}}) || q.send(rooms.Event{Wire: make([]byte, protocol.MaxFrame+1)}) {
+		t.Fatal("invalid shared-frame bounds accepted")
+	}
+}

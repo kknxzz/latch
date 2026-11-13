@@ -26,8 +26,15 @@ type outbox struct {
 
 func newOutbox() *outbox { return &outbox{items: make([]queued, 0, 64), ready: make(chan struct{}, 1)} }
 func (q *outbox) send(e rooms.Event) bool {
-	data, err := protocol.Encode(e.Type, e.RequestID, e.Body)
-	if err != nil {
+	data := e.Wire
+	if data == nil {
+		var err error
+		data, err = protocol.Encode(e.Type, e.RequestID, e.Body)
+		if err != nil {
+			return false
+		}
+	}
+	if len(data) == 0 || len(data) > protocol.MaxFrame {
 		return false
 	}
 	q.mu.Lock()

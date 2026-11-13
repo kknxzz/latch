@@ -23,10 +23,14 @@ type Event struct {
 	RoomID          string
 	Revision        uint64
 	Application     bool
+	// Wire is a canonical, immutable frame shared across message recipients.
+	// It is produced by protocol.Encode after the actor validates the message.
+	Wire []byte
 }
 type Peer struct {
 	Member protocol.Member
-	// Send must encode/copy an event before returning and never block.
+	// Send must encode/copy an event or retain its immutable Wire before returning,
+	// and must never block.
 	Send func(Event) bool
 	// DropQueued discards application frames for this room before a rekey barrier.
 	DropQueued func(string)
@@ -615,9 +619,16 @@ func (a *actor) handle(uuid string, e protocol.Envelope) {
 			return
 		}
 		body.SenderUUID = uuid
+		event := Event{Type: "message.deliver", Body: body, RoomID: r.id, Revision: r.revision, Application: true}
+		wire, err := protocol.Encode(event.Type, event.RequestID, event.Body)
+		if err != nil {
+			bad()
+			return
+		}
+		event.Wire = wire
 		for id := range r.members {
 			if id != uuid {
-				a.emit(id, Event{Type: "message.deliver", Body: body, RoomID: r.id, Revision: r.revision, Application: true})
+				a.emit(id, event)
 			}
 		}
 		a.ok(uuid, e.RequestID)

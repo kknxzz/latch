@@ -1,6 +1,7 @@
 package rooms
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
@@ -42,6 +43,13 @@ func newPeer(t *testing.T, m *Manager) *testPeer {
 		if err != nil {
 			t.Error(err)
 			return false
+		}
+		if e.Wire != nil {
+			if !bytes.Equal(data, e.Wire) {
+				t.Error("shared frame differs from canonical event")
+				return false
+			}
+			data = e.Wire
 		}
 		wire, err := protocol.Decode(data)
 		if err != nil {
