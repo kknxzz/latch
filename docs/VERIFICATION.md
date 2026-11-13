@@ -285,6 +285,48 @@ requests. Resource and latency numbers are recorded in `PERFORMANCE.md` with
 their transport/environment scope. Targeted Go vet checks passed for the updated
 client test harness and gateway tests.
 
+## Local Linux and Intel platform verification, 2026-11-13
+
+Local verification no longer requires hosted CI. QEMU 11.1.3 runs two disposable
+Ubuntu Minimal 24.04.5 guests, each with four virtual CPUs and 4 GiB RAM. ARM64
+uses Apple's HVF hardware acceleration; AMD64 uses TCG CPU emulation. The base
+images came from Canonical's Noble release dated 2026-11-05, verified against its
+HTTPS checksum manifest before boot:
+
+```text
+ARM64: 3dc8370d923978d4b610fa7964d1b36ba040eefb43198809ca5bc8ac51777b18
+AMD64: 406630c08b5e545fcc7209854b129d47e3af822db128c9f19336593b5a2d3fe0
+```
+
+Guest Go 1.27.4 archives were checked against official Go release metadata, and
+Rust 1.99.1 was installed with rustfmt, Clippy and llvm-tools. The source snapshot
+started at `6c1ad72`, followed by the recorded platform corrections. No production
+homelab services, developer Keychain or host certificate stores were changed.
+
+`TestSystemdInstallerLifecycle` passed with race detection on both Linux targets:
+1.80 seconds on ARM64 and 30.46 seconds under AMD64 emulation. It executes actual
+systemd installation, restricted service startup/TLS, administrator access,
+enrollment and persistent revocation, idempotent install, upgrade, downgrade
+rejection, failed-upgrade rollback and uninstall. Tests use only synthetic
+credentials/certificates inside the disposable VM.
+
+The complete `sh scripts/test-local.sh` then passed on native Linux ARM64:
+Rust tests/format/Clippy, all three Go modules' race tests and vet, actual terminal
+client/gateway scenarios, signed self-update, publisher/bootstrap contracts and
+exact committed notice-archive comparisons. The full AMD64 suite is still
+running; passing its installer test alone does not establish full client support.
+
+Execution exposed fixture assumptions about `TempDir`, Go output modes under
+`umask 0002`, and native enrollment requests carrying browser `Origin` headers.
+Fixtures now set intended modes and headers explicitly. Release builds explicitly
+set executable mode `0755`. Public notice inputs can be root-owned; private-key
+and artifact ownership/permission checks remain strict.
+
+The macOS Intel MLS library, actual client executable and all client Go race-test
+executables cross-compile as x86_64 in an isolated export. They have not executed:
+this Apple Silicon host currently lacks Rosetta. Intel execution and Keychain
+qualification remain outstanding; compilation is not treated as runtime evidence.
+
 ## Remaining verification
 
 Offline dependency-notice exports were added on 2026-11-13. The complete local
@@ -295,10 +337,12 @@ deprecated ZIP timestamp API; the refreshed Rust advisory database contained
 1509 advisories. The bundles preserve original attribution, exact crate source
 references and reviewed missing-file exceptions documented in `third_party/`.
 
-The Linux installer passed `sh -n`. No Linux runtime, systemd or container engine
-was available on this development host, so installation/rollback/uninstall and
-the service sandbox have not been executed. No public ACME request was made.
+Both Linux systemd installer lifecycle tests now pass as described above. The
+remaining platform runs, final signed artifact assembly/rebuild comparisons,
+publisher provisioning and public distribution verification remain outstanding.
+No public ACME request was made; existing certificate/reverse-proxy deployment
+does not require that optional path.
 
-Longer load and production performance measurements, production installation checks, the
-other platform matrix, genuine public release signature verification, independent reproducible
-builds, and an integration security review have not yet been completed.
+Longer soaks, physical deployment-host measurements, an external audit and another
+operator's rebuild can add assurance. They do not replace the original acceptance
+criteria or introduce additional mandatory v0.1.0 gates.

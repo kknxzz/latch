@@ -1,7 +1,8 @@
 # Latch server
 
-Under implementation; production setup is not complete. Persistent security state
-and protocol packages can be tested independently of the client and Rust:
+The gateway, private dashboard and guided systemd setup are implemented; release
+qualification remains in progress. Server packages can be tested independently
+of the client and Rust:
 
 ```sh
 go test -race ./...
@@ -68,8 +69,8 @@ downloads. No additional web server is needed. See the deployment guide for
 configuration and publication details; hosting does not establish publisher trust.
 
 The Linux installer, systemd unit, upgrade and uninstall commands are described
-in [the deployment guide](../docs/DEPLOYMENT.md). They are written but have not yet
-been executed in a fresh Linux VM. Opt-in systemd lifecycle tests compile for
-both Linux architectures; CI VM execution remains outstanding. Signed client
+in [the deployment guide](../docs/DEPLOYMENT.md). Actual install, upgrade, rollback
+and uninstall passed in fresh Ubuntu 24.04 ARM64 and AMD64 guests. ARM64 was
+hardware-virtualized and AMD64 emulated. Signed client
 bootstrap passes local process integration. Platform qualification and genuine
 release publication remain incomplete. See [the acceptance ledger](../docs/IMPLEMENTATION.md).
