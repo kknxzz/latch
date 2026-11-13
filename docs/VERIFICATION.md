@@ -1,6 +1,6 @@
 # Verification evidence
 
-Development verification on 2026-11-12. This is not a release qualification report.
+Development verification on 2026-11-12–13. This is not a release qualification report.
 
 ## Environment
 
@@ -247,14 +247,24 @@ go test -run='^$' -bench=BenchmarkDecode -benchmem -count=3 ./internal/protocol
 The existing decode fixture measured 2485, 2662 and 3056 ns/op; 2515–2516 B/op
 and 58 allocations/op. These are development samples while other builds were
 running, not isolated throughput/latency measurements. No optimization or
-end-to-end performance claim follows from them. Client/gateway RSS, idle CPU,
-per-connection memory, connection overhead, delivery latency, encryption/relay
-throughput, allocation profiles and release binary sizes remain to be measured.
+end-to-end performance claim follows from them.
 
 Subsequent crypto allocation/timing measurements are recorded with reproducible
 commands and their exact scope in [PERFORMANCE.md](PERFORMANCE.md). They cover
-the actual Go/native message ABI and native allocation counters, not the remaining
-network, idle CPU/RSS or full load qualification.
+the actual Go/native message ABI and native allocation counters. Subsequent
+opt-in process runs measured client/gateway idle RSS and CPU, 100 authenticated
+connections, connection latency and encrypted delivery at the configured request
+limit. The report documents the loopback transport and measurement limits.
+Relay fanout benchmarks also compare per-recipient encoding with shared immutable
+frames. Full load and production-platform qualification remain open.
+
+After the unchanged-nickname fast path, immutable relay fanout and runtime
+measurement harness were added, both `scripts/test-local.sh` and
+`scripts/security-checks.sh` passed again on 2026-11-13. This includes the real
+three-client integration scenario and race checks. The updated server test
+package cross-compiles for Linux AMD64 and ARM64; those executables were not run
+on this macOS host. The opt-in runtime harness completed three local runs,
+including a final run requiring clean gateway shutdown before reporting.
 
 ## Remaining verification
 
@@ -262,6 +272,6 @@ The Linux installer passed `sh -n`. No Linux runtime, systemd or container engin
 was available on this development host, so installation/rollback/uninstall and
 the service sandbox have not been executed. No public ACME request was made.
 
-Performance measurements, production installation checks, the
+Longer load and production performance measurements, production installation checks, the
 other platform matrix, genuine public release signature verification, independent reproducible
 builds, and an integration security review have not yet been completed.

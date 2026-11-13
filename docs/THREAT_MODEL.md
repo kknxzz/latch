@@ -12,6 +12,13 @@ room membership, packet sizes, and timing. A configured reverse proxy sees
 connection metadata too. TLS protects each network transport; MLS protects
 application content between room members.
 
+A TLS-terminating proxy can read enrollment codes, room PINs, device public keys
+and other control messages carried inside that transport. Conversation payloads
+remain MLS ciphertext. The proxy is therefore inside the transport trust boundary;
+origin HTTPS does not hide those control messages from it. Direct self-hosting
+can remove that additional TLS terminator, while the gateway still sees the
+metadata and access credentials required for enrollment and room admission.
+
 The enrollment and directory authority is trusted to bind device keys correctly.
 There is no independent identity verification in v1. A malicious authority can
 introduce attacker-controlled identities. Nicknames are unverified display labels.
