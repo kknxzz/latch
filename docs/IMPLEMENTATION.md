@@ -13,10 +13,10 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 | M6: enrollment and security state | Implemented locally | Atomic use, global limits, persistent eight-hour lockouts, dashboard issuance and key-ban tests pass |
 | M7: PINs and kicking | Implemented locally | Server policy and real-client PIN, kick/rejoin rejection and rekey tests pass |
 | M8: private dashboard | Implemented locally | Password/TOTP, persistent replay protection, CSRF/origin/cookies/session tests, private listener and live revocation pass; browser reviewed |
-| M9: installers and updates | In progress | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; genuine signing, publication and final distribution verification remain |
+| M9: installers and updates | Released in v0.1.0 | Actual systemd install/upgrade/rollback/uninstall pass on both Ubuntu Linux architectures; setup/doctor/TLS/PTY, TUF self-update and signed bootstrap pass; downloaded production server bundles pass both Linux installation lifecycles |
 | M10: integration/fuzz/performance | Implemented locally | Complete suites pass on both Linux architectures and both Mac architectures; Intel Mac uses Rosetta and Linux AMD64 uses emulation; four long fuzz campaigns and scoped runtime measurements recorded |
 | M11: security/resource review | Implemented locally | Static/vulnerability/secret checks, Rust audits, native fuzzing, bounded-resource/cleanup tests and security-sensitive integration checks pass; no external-audit claim |
-| M12: reproducible signed releases | In progress | Two isolated builds of every artifact match; common-commit/root six-artifact assembly verifies; genuine publisher provisioning, signing and publication remain |
+| M12: reproducible signed releases | Released in v0.1.0 | Two isolated production builds of every artifact match; common-commit/root six-artifact assembly verifies; production signatures, TUF targets and all private GitHub download assets verify |
 
 ## Required final behavior
 
@@ -43,13 +43,15 @@ source and recorded verification. Scaffolding and unexecuted tests are not proof
 - CI includes race/static/vulnerability/secret checks and Go/Rust tests.
 - Actual fuzz, benchmark, platform-install and reproducibility evidence.
 
-## Release gates requiring operator infrastructure
+## Published release
 
-Publishing is blocked until genuine release-signing keys are provisioned outside
-the repository, private reporting is enabled and release hosting is configured.
+v0.1.0 is signed with a production authority outside the repository and published
+in the private `kknxzz/latch` repository. Private reports use the maintainer email
+in `SECURITY.md`. GitHub Actions remains disabled; equivalent local checks ran.
 All supported architectures have executed local validation; the Intel targets
-use Rosetta/TCG as recorded below. Development test keys
-must never become release trust roots.
+use Rosetta/TCG as recorded below. Development test keys were not promoted to
+production trust roots. Exact final artifacts and checks are in
+[the release record](RELEASE_0.1.0.md).
 
 ## Current implementation boundaries
 
@@ -74,7 +76,7 @@ The signed terminal updater and client bootstrap are implemented and tested with
 real client executables. The publisher checks all six native artifact receipts,
 signs bootstrap files/checksums and emits verified TUF metadata. Its contract tests
 use synthetic executables; separate real-application builds now reproduce on all
-six targets and pass assembled-artifact verification with one QA root. Server
+six targets and pass assembled-artifact verification with the production root. Server
 bootstrap downloads and the systemd installation lifecycle are implemented/tested.
 The read-only CI candidate workflow now performs the complete verification gate,
 two native builds per platform and six-artifact assembly; it has not run remotely.
@@ -87,5 +89,6 @@ Apple's ARM-host compiler tools emitting x86_64 code. Hosted CI is an
 alternative execution route, not a separate requirement when equivalent checks
 are executed locally. An external audit, indefinite soak testing and a second
 operator's rebuild are additional assurance, not new mandatory v0.1.0 gates.
-Never describe this state as production-ready. Current verification
-commands and environment are recorded in `VERIFICATION.md`.
+The final production-root build, signing and distribution checks are complete.
+Verification commands and environment are recorded in `VERIFICATION.md` and
+the v0.1.0 release record. This is local qualification, not an external audit.

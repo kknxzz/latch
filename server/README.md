@@ -3,8 +3,8 @@
 For the signed download and guided installation path, start with the
 [server quickstart](../docs/QUICKSTART_SERVER.md).
 
-The gateway, private dashboard and guided systemd setup are implemented; release
-qualification remains in progress. Server packages can be tested independently
+The gateway, private dashboard and guided systemd setup are released in v0.1.0.
+Server packages can be tested independently
 of the client and Rust:
 
 ```sh
@@ -75,5 +75,7 @@ The Linux installer, systemd unit, upgrade and uninstall commands are described
 in [the deployment guide](../docs/DEPLOYMENT.md). Actual install, upgrade, rollback
 and uninstall passed in fresh Ubuntu 24.04 ARM64 and AMD64 guests. ARM64 was
 hardware-virtualized and AMD64 emulated. Signed client
-bootstrap passes local process integration. Platform qualification and genuine
-release publication remain incomplete. See [the acceptance ledger](../docs/IMPLEMENTATION.md).
+bootstrap passes local process integration. The production-root artifacts are
+signed, reproducible and published privately; downloaded signed server bundles
+pass both Linux installation lifecycles. See the
+[release record](../docs/RELEASE_0.1.0.md).

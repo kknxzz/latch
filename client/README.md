@@ -111,6 +111,8 @@ a trust root from the same untrusted mirror does not establish publisher identit
 The updater verifies signatures, freshness, hashes, length, version and platform
 before atomic replacement. It has no background polling, rejects downgrades and
 redirects, and preserves the executable after failed verification. Install into
-a directory you own so updates can run without privilege elevation. A genuine
-public release repository and signed initial bootstrap are not yet published.
+a directory you own so updates can run without privilege elevation. Signed v0.1.0
+artifacts and the initial bootstrap are published in the private repository.
+Operators can host the signed distribution on their own HTTPS endpoint; see
+[release verification](../docs/RELEASES.md).
 The exact interfaces and bounds are in [the update profile](../protocol/UPDATES.md).

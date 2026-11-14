@@ -58,4 +58,5 @@ directory exclusions, secret baselines or advisory ignore IDs.
 
 Scans are evidence against known patterns and published advisories. They do not
 establish that code is free of vulnerabilities or that a private key was never
-exposed. Key provisioning and release trust remain separate release gates.
+exposed. v0.1.0 uses a separately provisioned production authority; its public
+inputs and executed verification are in [the release record](RELEASE_0.1.0.md).

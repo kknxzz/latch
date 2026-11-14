@@ -7,5 +7,5 @@
   "openmls": "0.9.2",
   "openmls_provider_revision": "6100df3fb1d8c3eeab53e349fcbd621f98c44fe2",
   "libcrux_core_models_revision": "124d5987726715cfe2ce8da52a3ad1f1a0a0fb1e",
-  "notes": "Native target qualification and independent rebuild checks remain release gates."
+  "notes": "v0.1.0 native execution and isolated rebuild evidence is recorded in docs/RELEASE_0.1.0.md."
 }

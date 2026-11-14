@@ -1,7 +1,7 @@
 # Security policy
 
-Latch is under active development and has no supported production release yet.
-Do not deploy development builds for sensitive conversations.
+The supported release is v0.1.0. Verify release signatures before installation.
+Development builds are not supported production releases.
 
 ## Private reports
 

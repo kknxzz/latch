@@ -1,7 +1,8 @@
 # Install a Latch server
 
-The v0.1.0 release is being prepared. These commands apply once its signed
-assets are published in the private repository. You need repository access to
+Signed v0.1.0 assets are available in the
+[private release repository](https://github.com/kknxzz/latch/releases/tag/v0.1.0).
+You need repository access to
 download them; an installed Latch network does not contact GitHub.
 
 Use a dedicated Ubuntu 24.04 VM with systemd, on AMD64 or ARM64. You need
@@ -14,19 +15,18 @@ bundle for your VM's architecture:
 
 ```sh
 gh release download v0.1.0 --repo kknxzz/latch \
-  --pattern latch-server-linux-amd64.tar.gz
+  --pattern 'latch-server-linux-amd64.tar.gz*' --pattern publisher.pub
 ```
 
-For ARM64, use `latch-server-linux-arm64.tar.gz`. You can download through the
+For ARM64, use the pattern `latch-server-linux-arm64.tar.gz*`. Download both the
+archive and its `.sig` file. You can download through the
 [release page](https://github.com/kknxzz/latch/releases) instead and transfer the
-archive to the VM with `scp`; GitHub CLI is not required on the server.
+archive, signature and publisher key to the VM with `scp`; GitHub CLI is not
+required on the server.
 
-Extract into a new directory as your ordinary user:
+Check the separately downloaded publisher key before extracting anything:
 
 ```sh
-mkdir -m 700 latch-release
-tar -xzf latch-server-linux-amd64.tar.gz -C latch-release
-cd latch-release
 openssl pkey -pubin -in publisher.pub -outform DER | openssl dgst -sha256
 ```
 
@@ -41,6 +41,19 @@ A key and fingerprint supplied only by the same unfamiliar download are not
 independent verification.
 
 ## Verify and install
+
+Authenticate the archive before extraction, then extract as your ordinary user:
+
+```sh
+openssl dgst -sha256 -verify publisher.pub \
+  -signature latch-server-linux-amd64.tar.gz.sig latch-server-linux-amd64.tar.gz && \
+mkdir -m 700 latch-release && \
+tar -xzf latch-server-linux-amd64.tar.gz -C latch-release && \
+cd latch-release
+```
+
+Use the ARM64 filenames on ARM64. Continue only if verification and extraction
+succeed. Verify the bootstrap and run guided setup:
 
 ```sh
 openssl dgst -sha256 -verify publisher.pub -signature start.sh.sig start.sh && \

@@ -2,7 +2,8 @@
 
 Setup and signed download tooling are implemented. Installation, upgrade,
 rollback and uninstall passed in local Ubuntu 24.04 AMD64 and ARM64 VMs.
-Genuine release publication remains outstanding. The
+Signed v0.1.0 server bundles are available through the
+[server quickstart](QUICKSTART_SERVER.md). The
 local commands below require a locally built or independently verified Linux
 server binary; they do not establish release authenticity themselves. For the
 verified download command, see [release verification](RELEASES.md).

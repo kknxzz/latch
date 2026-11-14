@@ -1,6 +1,9 @@
 # Verification evidence
 
 Development verification on 2026-11-12–13. This is not a release qualification report.
+The final production-root builds, signatures and private release publication on
+2026-11-14 are recorded separately in [the v0.1.0 release record](RELEASE_0.1.0.md).
+Earlier QA checkpoints below retain their original scope and authority.
 
 ## Environment
 
@@ -391,7 +394,7 @@ both private account records were removed afterward. Existing Keychain entries
 were not modified. Ordinary tests skip this OS-store probe unless explicitly
 enabled; it emits no private-key data or credential values.
 
-## Remaining verification
+## Final verification status
 
 Offline dependency-notice exports were added on 2026-11-13. The complete local
 race/integration script and deterministic archive checks passed. Both application
@@ -401,9 +404,9 @@ deprecated ZIP timestamp API; the refreshed Rust advisory database contained
 1509 advisories. The bundles preserve original attribution, exact crate source
 references and reviewed missing-file exceptions documented in `third_party/`.
 
-Both Linux systemd installer lifecycle tests now pass as described above. The
-remaining platform runs, final signed artifact assembly/rebuild comparisons,
-publisher provisioning and public distribution verification remain outstanding.
+Both Linux systemd installer lifecycle tests pass as described above. Subsequent
+platform runs, production-root assembly/rebuild comparisons, publisher provisioning,
+signing and private distribution verification are complete; see the release record.
 No public ACME request was made; existing certificate/reverse-proxy deployment
 does not require that optional path.
 
