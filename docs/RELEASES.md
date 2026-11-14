@@ -185,6 +185,12 @@ adds `--upgrade`; it restarts the gateway and destroys active rooms. Client
 upgrades use `latch update --check` and `latch update`. Never pipe an unverified
 network response into a shell or place enrollment codes in the command line.
 
+For private release downloads or transferring files to a server, the verified
+bootstrap also supports `--component server --offline-directory DIR` instead of
+`--repository URL`. It checks the same signed manifest, expiration and hashes,
+copies bounded regular files into private temporary storage and rejects symlinks.
+See the [server quickstart](QUICKSTART_SERVER.md) for the download-to-install flow.
+
 The manifest's signed SHA-256 lines are the binary checksums. To verify a manual
 download, first verify `manifest.sig` with the same OpenSSL command, check expiry,
 then compare `openssl dgst -sha256 BINARY` with that exact filename's manifest

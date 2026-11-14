@@ -9,9 +9,11 @@ usage() {
   echo '       [--bin-dir DIR] [--config-dir DIR] [--nick NAME] [--identity-backend file|keychain]'
   echo '       [--non-interactive --enrollment-fd FD] [--no-start] [--dev]'
   echo '       --component server [--upgrade] [-- SERVER_SETUP_ARGUMENTS]'
+  echo '       --component server --offline-directory DIR --publisher-key FILE [-- SERVER_SETUP_ARGUMENTS]'
   exit 1
 }
 repository=
+offline=
 publisher_key=
 server=
 bin_dir=${HOME:?}/.local/bin
@@ -28,6 +30,7 @@ server_action=install
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --repository) [ "$#" -ge 2 ] || usage; repository=$2; shift 2 ;;
+    --offline-directory) [ "$#" -ge 2 ] || usage; offline=$2; shift 2 ;;
     --publisher-key) [ "$#" -ge 2 ] || usage; publisher_key=$2; shift 2 ;;
     --server) [ "$#" -ge 2 ] || usage; server=$2; shift 2 ;;
     --bin-dir) [ "$#" -ge 2 ] || usage; bin_dir=$2; shift 2 ;;
@@ -50,7 +53,13 @@ if [ "$component" = client ]; then
 else
   [ "$no_start" = false ] && [ "$nick_set" = false ] && [ -z "$configuration$backend$enrollment_fd$server" ] && [ "$development" = false ] && [ "$noninteractive" = false ] || fail 'Client onboarding flags do not apply to server installation. Put server setup flags after --.'
 fi
-case "$repository" in https://?*) ;; *) fail 'Supply an explicit HTTPS release repository.' ;; esac
+if [ -n "$offline" ]; then
+  [ "$component" = server ] && [ -z "$repository" ] || fail 'Offline installation requires --component server and no --repository.'
+  [ -d "$offline" ] && [ ! -L "$offline" ] || fail 'Supply a regular offline release directory.'
+  offline=$(CDPATH= cd -- "$offline" && pwd)
+else
+  case "$repository" in https://?*) ;; *) fail 'Supply an explicit HTTPS release repository.' ;; esac
+fi
 case "$repository" in *'@'*|*'?'*|*'#'*|*'%'*|*'..'*|*'\'*) fail 'Unsafe release repository URL.' ;; esac
 if printf '%s' "$repository" | LC_ALL=C grep -q '[[:space:][:cntrl:]]'; then fail 'Unsafe release repository URL.'; fi
 repository=${repository%/}
@@ -64,7 +73,8 @@ fi
 if [ "$noninteractive" = true ] && [ "$no_start" = false ]; then
   [ -n "$enrollment_fd" ] || fail 'Noninteractive enrollment requires --enrollment-fd.'
 fi
-for tool in openssl curl mktemp awk grep wc date stat id; do command -v "$tool" >/dev/null 2>&1 || fail "Missing required installer tool: $tool"; done
+for tool in openssl mktemp awk grep wc date stat id head; do command -v "$tool" >/dev/null 2>&1 || fail "Missing required installer tool: $tool"; done
+if [ -z "$offline" ]; then command -v curl >/dev/null 2>&1 || fail 'Missing required installer tool: curl'; fi
 case "$(uname -s)" in
   Darwin) platform=darwin ;;
   Linux) platform=linux ;;
@@ -87,7 +97,12 @@ trap 'rm -rf -- "$temporary"; if [ -n "$stage" ]; then rm -f -- "$stage"; fi' EX
 trap 'exit 130' INT
 trap 'exit 143' TERM
 download() {
-  "$curl_bin" --disable --fail --silent --show-error --proto '=https' --tlsv1.3 --connect-timeout 5 --max-time 120 --max-filesize "$2" "$repository/$1" -o "$temporary/$1" || fail 'Download failed. The installer requires a curl build with TLS 1.3 support.'
+  if [ -n "$offline" ]; then
+    [ -f "$offline/$1" ] && [ ! -L "$offline/$1" ] || fail "Missing regular release file: $1"
+    head -c "$(( $2 + 1 ))" "$offline/$1" > "$temporary/$1" || fail 'Cannot read offline release file.'
+  else
+    "$curl_bin" --disable --fail --silent --show-error --proto '=https' --tlsv1.3 --connect-timeout 5 --max-time 120 --max-filesize "$2" "$repository/$1" -o "$temporary/$1" || fail 'Download failed. The installer requires a curl build with TLS 1.3 support.'
+  fi
   [ "$(wc -c < "$temporary/$1")" -le "$2" ] || fail 'Download exceeded its limit.'
 }
 download manifest.txt 32768

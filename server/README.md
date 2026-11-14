@@ -1,5 +1,8 @@
 # Latch server
 
+For the signed download and guided installation path, start with the
+[server quickstart](../docs/QUICKSTART_SERVER.md).
+
 The gateway, private dashboard and guided systemd setup are implemented; release
 qualification remains in progress. Server packages can be tested independently
 of the client and Rust:

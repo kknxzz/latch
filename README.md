@@ -11,6 +11,9 @@ are included in this repository.
 
 Public verification inputs are in [`release/`](release/README.md).
 
+For server downloads and guided installation, see the
+[server quickstart](docs/QUICKSTART_SERVER.md).
+
 ## Build boundaries
 
 - `client/`: independent Go module, native terminal client, Rust crypto bridge.
