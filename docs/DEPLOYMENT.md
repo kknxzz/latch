@@ -1,7 +1,8 @@
 # Server deployment
 
-Setup and signed download tooling are implemented. Genuine release publication
-and fresh Linux/systemd installation qualification are still release gates. The
+Setup and signed download tooling are implemented. Installation, upgrade,
+rollback and uninstall passed in local Ubuntu 24.04 AMD64 and ARM64 VMs.
+Genuine release publication remains outstanding. The
 local commands below require a locally built or independently verified Linux
 server binary; they do not establish release authenticity themselves. For the
 verified download command, see [release verification](RELEASES.md).

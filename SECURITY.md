@@ -5,13 +5,14 @@ Do not deploy development builds for sensitive conversations.
 
 ## Private reports
 
-Use the repository's **Security → Report a vulnerability** feature to send a
-private GitHub vulnerability report. Do not put exploit details, credentials,
-private keys, or message contents in a public issue.
+Email **levin@ferriteworks.com** to report a vulnerability privately. Do not put
+exploit details, credentials, private keys, or message contents in an issue.
+The initial repository is private; GitHub's public-repository vulnerability
+reporting feature is not required to contact the maintainer.
 
-If this option is unavailable, the repository is not ready for public release:
-maintainers must enable private vulnerability reporting before publishing a
-supported release. There is no invented reporting address in this policy.
+For sensitive material, first send a brief description and request an encrypted
+exchange. Ordinary email does not provide end-to-end confidentiality. Never
+send real conversation contents or production private keys.
 
 Include the affected version or commit, platform, reproduction steps, expected
 and actual behavior, and the security impact. Use synthetic test data. Maintainers

@@ -1,10 +1,12 @@
 # Building and authenticating releases
 
-Release tooling is implemented, but no genuine public signing authority or
-qualified release has been published. Both local Linux verification suites and
+Release tooling and the production signing authority are prepared, but no
+qualified release has been published. Public verification inputs are in
+[`release/`](../release/README.md); private keys remain outside this repository.
+Both local Linux verification suites and
 systemd installation lifecycles pass. Platform execution and isolated rebuild
-comparisons now pass locally for all six QA artifacts. Genuine publisher setup,
-private reporting and signed public distribution remain. Do not distribute
+comparisons now pass locally for all six QA artifacts. Final production-root
+builds, signing and private repository distribution remain. Do not distribute
 test keys as project trust roots.
 
 ## Operator keys

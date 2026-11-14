@@ -6,8 +6,10 @@ an embedded OpenMLS library; the gateway relays opaque ciphertext.
 
 **Release preparation in progress. No supported production release is published yet.** See
 [the implementation checklist](docs/IMPLEMENTATION.md) for verified capabilities
-and outstanding release gates. No release signing keys or production credentials
+and outstanding release gates. No private signing keys or production credentials
 are included in this repository.
+
+Public verification inputs are in [`release/`](release/README.md).
 
 ## Build boundaries
 
@@ -28,7 +30,8 @@ configuration are the security boundary, not implementation secrecy.
 
 Signed installation, publisher setup and terminal update instructions are in
 [release verification](docs/RELEASES.md). All four platform suites pass locally;
-all six QA artifacts reproduce byte-for-byte. Production signing, private
-reporting setup and public distribution remain outstanding.
+all six QA artifacts reproduce byte-for-byte. Production signing and release
+distribution remain outstanding. Private vulnerability reports go to the
+maintainer address in [the security policy](SECURITY.md).
 
 Licensed under the [MIT License](LICENSE).
