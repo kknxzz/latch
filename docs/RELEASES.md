@@ -1,12 +1,14 @@
 # Building and authenticating releases
 
-Release tooling and the production signing authority are prepared, but no
-qualified release has been published. Public verification inputs are in
+Signed v0.1.0 is published in the private repository. Its exact source, artifact
+hashes and executed checks are in the [release record](RELEASE_0.1.0.md).
+Public verification inputs are in
 [`release/`](../release/README.md); private keys remain outside this repository.
 Both local Linux verification suites and
 systemd installation lifecycles pass. Platform execution and isolated rebuild
-comparisons now pass locally for all six QA artifacts. Final production-root
-builds, signing and private repository distribution remain. Do not distribute
+comparisons pass locally for all six production artifacts. Downloaded signed
+server bundles pass actual installation lifecycles on both Linux architectures.
+Do not distribute
 test keys as project trust roots.
 
 ## Operator keys
@@ -154,6 +156,34 @@ directly through the optional `distribution_dir` configuration, including the
 [deployment](DEPLOYMENT.md#hosting-client-downloads) for public file permissions
 and bounded serving behavior. An existing HTTPS web server may host the same
 files independently. Never expose the signing directory or private state.
+
+### Download bundles
+
+From the repository root, package only the signed public output. The standard
+library helper sorts paths, fixes archive timestamps/modes and rejects links and
+oversized files. It reads no private keys. Use the source commit's Unix timestamp
+for `SOURCE_EPOCH`:
+
+```sh
+go run scripts/package-release.go --directory /absolute/public/client-dist \
+  --output /absolute/packages/latch-server-linux-amd64.tar.gz \
+  --arch amd64 --epoch SOURCE_EPOCH
+```
+
+Repeat with `--arch arm64` for the other server bundle. Omit `--arch` to package
+the complete distribution, including TUF metadata and targets. Output must not
+already exist. Authenticate each archive before extraction by publishing a
+detached signature made with the existing publisher key:
+
+```sh
+openssl dgst -sha256 -sign /absolute/protected/latch-signing/targets.pem \
+  -out /absolute/packages/latch-server-linux-amd64.tar.gz.sig \
+  /absolute/packages/latch-server-linux-amd64.tar.gz
+```
+
+After refreshing metadata, regenerate and sign the bundles as well. Keep old
+versioned TUF roots/metadata/targets in the hosted distribution. Upload the
+archives, their `.sig` files and public verification inputs; never upload keys.
 
 ## Safe first installation
 
